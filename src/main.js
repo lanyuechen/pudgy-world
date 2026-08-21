@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildPenguPlazaScene } from './scene/buildScene.js';
 import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
+import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
 
 const sceneOptions = getSceneOptions();
@@ -13,6 +14,7 @@ const loadingEl = document.getElementById('loading');
 const loadingBar = document.getElementById('loading-bar');
 const loadingStatus = document.getElementById('loading-status');
 const selectEl = document.getElementById('scene-select');
+const hintEl = document.getElementById('hint');
 
 for (const opt of sceneOptions) {
   const el = document.createElement('option');
@@ -54,14 +56,22 @@ renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-const { camera, controls, applyView, reset } = createExploreCamera(canvas);
+const explore = createExploreCamera(canvas);
+const camera = explore.camera;
 
 /** @type {Map<string, object>} */
 const cache = new Map();
 let world = null;
+let playerSystem = null;
 let currentId = null;
 let switching = false;
 const clock = new THREE.Clock();
+
+function setHint(playable) {
+  hintEl.textContent = playable
+    ? 'WASD move · Shift slide · Space jump · Hold LMB look'
+    : 'LMB drag: orbit · RMB / wheel: pan / zoom · Space: reset';
+}
 
 function sceneIdFromHash() {
   const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
@@ -79,6 +89,32 @@ async function buildScene(option) {
     loadingManager,
     onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
   });
+}
+
+async function attachPlayer(next) {
+  if (playerSystem) {
+    playerSystem.dispose();
+    playerSystem = null;
+  }
+
+  if (!next.playable) {
+    explore.controls.enabled = true;
+    explore.applyView(next.cameraView);
+    setHint(false);
+    return;
+  }
+
+  explore.controls.enabled = false;
+  setProgress(0.92, 'Spawning player…');
+  playerSystem = await createPlayerSystem({
+    scene: next.scene,
+    camera,
+    canvas,
+    collisionRoot: next.collisionRoot,
+    loadingManager,
+    spawn: next.spawn,
+  });
+  setHint(true);
 }
 
 async function loadScene(id, { pushHash = true } = {}) {
@@ -99,9 +135,15 @@ async function loadScene(id, { pushHash = true } = {}) {
       cache.set(id, next);
     }
 
+    // Drop previous player when leaving a cached playable scene; re-attach on enter.
+    if (playerSystem) {
+      playerSystem.dispose();
+      playerSystem = null;
+    }
+
     world = next;
     currentId = id;
-    applyView(next.cameraView);
+    await attachPlayer(next);
     setProgress(1, 'Ready');
     if (pushHash) {
       const nextHash = `#${encodeURIComponent(id)}`;
@@ -130,16 +172,20 @@ window.addEventListener('hashchange', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space') {
+  if (e.code === 'Space' && !playerSystem) {
     e.preventDefault();
-    reset();
+    explore.reset();
   }
 });
 
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
-  controls.update();
+  if (playerSystem) {
+    playerSystem.update(dt);
+  } else {
+    explore.controls.update();
+  }
   world?.update?.(dt);
   if (world?.scene) {
     renderer.render(world.scene, camera);

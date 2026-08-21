@@ -5,9 +5,10 @@ import { createLights } from './lights.js';
 import { createWater } from './water.js';
 import { createSnow } from './snow.js';
 import { loadPenguPlaza } from './loadPlaza.js';
+import { PLAYER } from '../config/playerConfig.js';
 
 /**
- * Builds the Pengu_Plaza visual world (scene setup step).
+ * Builds the Pengu_Plaza visual world (playable).
  */
 export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) {
   const scene = new THREE.Scene();
@@ -18,7 +19,7 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
   scene.add(sky);
 
   const lights = createLights(scene, {
-    target: SCENE.camera.lookAt,
+    target: PLAYER.spawn,
     castShadow: true,
   });
 
@@ -45,6 +46,9 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     water,
     snow,
     plaza,
+    playable: true,
+    collisionRoot: plaza,
+    spawn: { ...PLAYER.spawn },
     cameraView: {
       lookAt: SCENE.camera.lookAt,
       orbitDistance: SCENE.camera.orbitDistance,

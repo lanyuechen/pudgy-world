@@ -70,6 +70,9 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
     scene,
     root: wrapper,
     cameraView,
+    playable: true,
+    collisionRoot: wrapper,
+    spawn: { x: 0, y: 20, z: 0 },
     update() {},
   };
 }
