@@ -8,7 +8,6 @@ import { loadPenguPlaza } from './loadPlaza.js';
 
 /**
  * Builds the Pengu_Plaza visual world (scene setup step).
- * Deferred: networking, player, HUD, toon outline PP, baked lightmaps.
  */
 export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) {
   const scene = new THREE.Scene();
@@ -18,7 +17,10 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
   const sky = createProceduralSky();
   scene.add(sky);
 
-  const lights = createLights(scene);
+  const lights = createLights(scene, {
+    target: SCENE.camera.lookAt,
+    castShadow: true,
+  });
 
   const water = createWater();
   scene.add(water);
@@ -28,12 +30,12 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
   try {
     snowTexture = await textureLoader.loadAsync(SCENE.assets.snowParticle);
   } catch {
-    // Particle texture optional
+    // optional
   }
   const snow = createSnow(snowTexture);
   scene.add(snow.points);
 
-  onProgress?.('Loading Pengu Plaza mesh…');
+  onProgress?.('Loading Pengu Plaza mesh…', 0.4);
   const plaza = await loadPenguPlaza(loadingManager);
   scene.add(plaza);
 
@@ -43,6 +45,15 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     water,
     snow,
     plaza,
+    cameraView: {
+      lookAt: SCENE.camera.lookAt,
+      orbitDistance: SCENE.camera.orbitDistance,
+      orbitPitch: SCENE.camera.orbitPitch,
+      orbitYaw: SCENE.camera.orbitYaw,
+      far: SCENE.camera.far,
+      maxDistance: 180,
+      minDistance: SCENE.camera.distance,
+    },
     update(dt) {
       snow.update(dt);
     },

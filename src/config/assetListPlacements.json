@@ -1,0 +1,696 @@
+{
+  "camera": {
+    "lookAt": {
+      "x": 281.85685,
+      "y": 20,
+      "z": 77.29092
+    },
+    "orbitDistance": 420,
+    "orbitPitch": 35,
+    "orbitYaw": 40,
+    "far": 4000,
+    "maxDistance": 1500
+  },
+  "placements": [
+    {
+      "name": "Individual_Lobby_02",
+      "url": "/assets/models/asset-list/Individual_Lobby_02.fbx",
+      "position": {
+        "x": 745.78815,
+        "y": 1.3908525,
+        "z": 106.81040999999999
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_SalmonSettlement_02",
+      "url": "/assets/models/asset-list/Individual_SalmonSettlement_02.fbx",
+      "position": {
+        "x": 592.49605,
+        "y": 5.185589,
+        "z": 613.26092
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_PudgyStone_02",
+      "url": "/assets/models/asset-list/Individual_PudgyStone_02.fbx",
+      "position": {
+        "x": 555.84685,
+        "y": 4.7247276,
+        "z": 444.27092
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Asset_CatSmurf_01",
+      "url": "/assets/models/asset-list/Asset_CatSmurf_01.fbx",
+      "position": {
+        "x": 59.980028000000004,
+        "y": 0.67966044,
+        "z": -83.363884
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_IceBreakerAlley_02",
+      "url": "/assets/models/asset-list/Individual_IceBreakerAlley_02.fbx",
+      "position": {
+        "x": 698.84685,
+        "y": 14.219606,
+        "z": -210.72908
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": 0.91190577,
+        "z": -0.0,
+        "w": 0.41039976
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_PudgyPort_02",
+      "url": "/assets/models/asset-list/Individual_PudgyPort_02.fbx",
+      "position": {
+        "x": 401.39177,
+        "y": 5.1808476,
+        "z": 952.23369
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Asset_ArcadeMachine",
+      "url": "/assets/models/asset-list/Asset_ArcadeMachine.fbx",
+      "position": {
+        "x": 62.373025500000004,
+        "y": 0.61022997,
+        "z": -83.54917900000001
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_JamboreeSquare_02",
+      "url": "/assets/models/asset-list/Individual_JamboreeSquare_02.fbx",
+      "position": {
+        "x": 689.59365,
+        "y": 0.0,
+        "z": -20.958145000000002
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": 0.6637181,
+        "z": -0.0,
+        "w": 0.7479829
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Asset_NewWorldSign",
+      "url": "/assets/models/asset-list/Asset_NewWorldSign.fbx",
+      "position": {
+        "x": 64.253629,
+        "y": 0.9397574,
+        "z": -83.968912
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Seagul_Animated_01",
+      "url": "/assets/models/asset-list/Seagul_Animated_01.fbx",
+      "position": {
+        "x": 71.39685,
+        "y": 2.45,
+        "z": -83.67908
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_PenguPlaza_02",
+      "url": "/assets/models/asset-list/Individual_PenguPlaza_02.fbx",
+      "position": {
+        "x": 355.84685,
+        "y": 13.55341,
+        "z": 498.27092
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_BowlCutBeach_02",
+      "url": "/assets/models/asset-list/Individual_BowlCutBeach_02.fbx",
+      "position": {
+        "x": 507.65502000000004,
+        "y": 0.0,
+        "z": 62.57090999999999
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_PudgyPort_01",
+      "url": "/assets/models/asset-list/Individual_PudgyPort_01.fbx",
+      "position": {
+        "x": 248.34685000000002,
+        "y": 0.0,
+        "z": -22.829080000000005
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Extras_Walkway_01",
+      "url": "/assets/models/asset-list/Extras_Walkway_01.fbx",
+      "position": {
+        "x": 85.674094,
+        "y": 1.3731358,
+        "z": -154.62105
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Extras_FerrisWheelCart",
+      "url": "/assets/models/asset-list/Extras_FerrisWheelCart.fbx",
+      "position": {
+        "x": 37.2595,
+        "y": 1.2763307,
+        "z": -84.15908
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Anim_BigDoor_Open_01",
+      "url": "/assets/models/asset-list/Anim_BigDoor_Open_01.fbx",
+      "position": {
+        "x": 81.855526,
+        "y": -4.9931805e-07,
+        "z": -103.319965
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Animation_SmallDoor_Open_01",
+      "url": "/assets/models/asset-list/Animation_SmallDoor_Open_01.fbx",
+      "position": {
+        "x": 91.13685000000001,
+        "y": -3.0378214e-07,
+        "z": -101.812027
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Asset_Trees_01",
+      "url": "/assets/models/asset-list/Asset_Trees_01.fbx",
+      "position": {
+        "x": 47.63685,
+        "y": 0.8960275,
+        "z": -83.51625200000001
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Extras_Clouds_01",
+      "url": "/assets/models/asset-list/Extras_Clouds_01.fbx",
+      "position": {
+        "x": 52.137887000000006,
+        "y": 0.16826437,
+        "z": 60.37091999999999
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_BeverlyChills_02",
+      "url": "/assets/models/asset-list/Individual_BeverlyChills_02.fbx",
+      "position": {
+        "x": 496.84685,
+        "y": -10.9,
+        "z": -82.929092
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": 0.34245798,
+        "z": -0.0,
+        "w": 0.9395332
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Anim_BigDoor_Shake_01",
+      "url": "/assets/models/asset-list/Anim_BigDoor_Shake_01.fbx",
+      "position": {
+        "x": 86.88685000000001,
+        "y": -3.8940925e-08,
+        "z": -102.99908
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_PoomPoomPalace_02",
+      "url": "/assets/models/asset-list/Individual_PoomPoomPalace_02.fbx",
+      "position": {
+        "x": 371.74871,
+        "y": 0.854606,
+        "z": 664.3522200000001
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Extras_RaceTrack_01",
+      "url": "/assets/models/asset-list/Extras_RaceTrack_01.fbx",
+      "position": {
+        "x": 10.705060000000003,
+        "y": 1.419424,
+        "z": -122.96020000000001
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_SalmonSettlement_01",
+      "url": "/assets/models/asset-list/Individual_SalmonSettlement_01.fbx",
+      "position": {
+        "x": 266.54685,
+        "y": 0.0,
+        "z": 172.47091999999998
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_NothingHappeningHereSquare_02",
+      "url": "/assets/models/asset-list/Individual_NothingHappeningHereSquare_02.fbx",
+      "position": {
+        "x": 742.5468500000001,
+        "y": 6.7500696,
+        "z": 227.57092
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Extras_FerrisWheel",
+      "url": "/assets/models/asset-list/Extras_FerrisWheel.fbx",
+      "position": {
+        "x": 38.304526,
+        "y": 5.502949,
+        "z": -92.595917
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_IceBreakerAlley_01",
+      "url": "/assets/models/asset-list/Individual_IceBreakerAlley_01.fbx",
+      "position": {
+        "x": 242.44684999999998,
+        "y": 4.7243834,
+        "z": -149.82908
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Collider_Door",
+      "url": "/assets/models/asset-list/Collider_Door.fbx",
+      "position": {
+        "x": 56.68685000000001,
+        "y": 1.3425004,
+        "z": -83.572614
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Extras_OnlyUpCourse_02",
+      "url": "/assets/models/asset-list/Extras_OnlyUpCourse_02.fbx",
+      "position": {
+        "x": -1.0531500000000023,
+        "y": 14.13879,
+        "z": -84.499357
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_BowlCutBeach_03",
+      "url": "/assets/models/asset-list/Individual_BowlCutBeach_03.fbx",
+      "position": {
+        "x": 518.6469,
+        "y": 0.0,
+        "z": 206.97091999999998
+      },
+      "rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_BearTown_02",
+      "url": "/assets/models/asset-list/Individual_BearTown_02.fbx",
+      "position": {
+        "x": 586.84685,
+        "y": 40.279507,
+        "z": -311.72908
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Individual_PudgyPeaks_02",
+      "url": "/assets/models/asset-list/Individual_PudgyPeaks_02.fbx",
+      "position": {
+        "x": 404.78735,
+        "y": 5.7464943,
+        "z": 781.36932
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": 0.97917205,
+        "z": -0.0,
+        "w": 0.2030324
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Collider_Curtain",
+      "url": "/assets/models/asset-list/Collider_Curtain.fbx",
+      "position": {
+        "x": 67.4020654,
+        "y": 1.509265,
+        "z": -84.099872
+      },
+      "rotation": {
+        "x": 6.123234e-17,
+        "y": 1.0,
+        "z": -6.123234e-17,
+        "w": 5.0532154e-16
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "name": "Environment_Lobby_01",
+      "url": "/assets/models/asset-list/Environment_Lobby_01.fbx",
+      "position": {
+        "x": 244.30001,
+        "y": 0.0,
+        "z": 69.19999999999999
+      },
+      "rotation": {
+        "x": -0.0,
+        "y": -0.0,
+        "z": -0.0,
+        "w": 1.0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { SCENE } from '../config/sceneConfig.js';
  * Approximates Unity Skybox/Procedural (Skybox_Test.mat):
  * cyan sky tint, aqua ground, exposure 2.09, atmosphere 0.6, sun disk off.
  */
-export function createProceduralSky() {
+export function createProceduralSky(radius = 400) {
   const { skyTint, groundColor, skyExposure, atmosphereThickness } = SCENE;
 
   const uniforms = {
@@ -48,7 +48,7 @@ export function createProceduralSky() {
     depthWrite: false,
   });
 
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), material);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 16), material);
   sky.name = 'ProceduralSky';
   sky.frustumCulled = false;
   return sky;
