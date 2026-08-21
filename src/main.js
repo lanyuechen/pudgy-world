@@ -5,6 +5,7 @@ import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
+import { createOutlineComposer } from './rendering/outlineComposer.js';
 
 const sceneOptions = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
@@ -59,6 +60,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const explore = createExploreCamera(canvas);
 const camera = explore.camera;
 
+/** Outline composer is bound per active scene (normals + color Roberts, Unity Outlines). */
+let outlineComposer = null;
+
 /** @type {Map<string, object>} */
 const cache = new Map();
 let world = null;
@@ -66,6 +70,12 @@ let playerSystem = null;
 let currentId = null;
 let switching = false;
 const clock = new THREE.Clock();
+
+function bindOutlineComposer(scene) {
+  outlineComposer?.dispose();
+  outlineComposer = createOutlineComposer(renderer, scene, camera);
+  outlineComposer.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
+}
 
 function setHint(playable) {
   hintEl.textContent = playable
@@ -143,6 +153,7 @@ async function loadScene(id, { pushHash = true } = {}) {
 
     world = next;
     currentId = id;
+    bindOutlineComposer(next.scene);
     await attachPlayer(next);
     setProgress(1, 'Ready');
     if (pushHash) {
@@ -188,7 +199,8 @@ function animate() {
   }
   world?.update?.(dt);
   if (world?.scene) {
-    renderer.render(world.scene, camera);
+    if (outlineComposer) outlineComposer.render();
+    else renderer.render(world.scene, camera);
   }
 }
 
@@ -196,6 +208,7 @@ function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  outlineComposer?.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
 }
 window.addEventListener('resize', onResize);
 

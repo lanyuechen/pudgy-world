@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { PLAYER } from '../config/playerConfig.js';
+import { createToonMaterial } from '../rendering/toonMaterial.js';
 
 /**
  * Load the same FBX as Unity Player.prefab (Assets/FBXs/player_pudgy.fbx).
@@ -19,7 +20,8 @@ export async function loadPlayerModel(loadingManager) {
   traitsMap.flipY = true;
   traitsMap.anisotropy = 8;
 
-  const material = new THREE.MeshLambertMaterial({
+  // Unity ToonS_Traits_ColorAtlas
+  const material = createToonMaterial({
     map: traitsMap,
     color: 0xffffff,
   });

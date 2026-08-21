@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { SCENE } from '../config/sceneConfig.js';
+import { createToonMaterial } from '../rendering/toonMaterial.js';
 
 function isBillboard(name = '') {
   return name.toLowerCase().includes('billboard');
 }
 
 /**
- * Shared TheBerg / Billboard atlas materials (flipY true for Unity/FBX UVs).
+ * Shared TheBerg / Billboard atlas materials (Unity ToonS_* + flipY for FBX UVs).
  */
 export async function createAtlasMaterials(loadingManager) {
   const textureLoader = new THREE.TextureLoader(loadingManager);
@@ -22,12 +23,12 @@ export async function createAtlasMaterials(loadingManager) {
     map.needsUpdate = true;
   }
 
-  const bergMaterial = new THREE.MeshLambertMaterial({
+  const bergMaterial = createToonMaterial({
     map: bergMap,
     color: 0xffffff,
   });
 
-  const billboardMaterial = new THREE.MeshLambertMaterial({
+  const billboardMaterial = createToonMaterial({
     map: billboardMap,
     color: 0xffffff,
     transparent: true,
