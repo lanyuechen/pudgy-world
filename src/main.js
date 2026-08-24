@@ -107,7 +107,7 @@ function bindOutlineComposer(scene) {
 
 function setHint(playable) {
   hintEl.textContent = playable
-    ? 'WASD move · Shift slide · Space jump · F throw · Hold LMB look · Scroll zoom'
+    ? 'WASD move · Shift slide · Space jump · F throw · Click fish · Hold drag look · Scroll zoom'
     : 'LMB drag: orbit · RMB / wheel: pan / zoom · Space: reset';
 }
 
@@ -150,6 +150,7 @@ async function attachPlayer(next) {
     canvas,
     collisionRoot: next.collisionRoot,
     loadingManager,
+    fishingHoles: next.fishingHoles ?? null,
     spawn: next.spawn,
   });
   setHint(true);

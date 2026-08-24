@@ -7,6 +7,8 @@ import { createSnowballSystem } from './snowball.js';
 import { createPlayerCamera } from '../camera/playerCamera.js';
 import { createPlayerInput } from '../input/playerInput.js';
 import { createSnowballHitCounter } from '../ui/snowballHitCounter.js';
+import { createFishingSession } from '../fishing/fishingSession.js';
+import { createFishingPrompt } from '../ui/fishingPrompt.js';
 
 function collectColliders(root) {
   const meshes = [];
@@ -27,8 +29,7 @@ function findHandBone(root) {
 }
 
 /**
- * Spawn local player + follow camera + locomotion clips + snowball throw.
- * Throw matches Player.cs Simulate / ThrowSnowball + Snowball.cs.
+ * Spawn local player + follow camera + locomotion + snowball throw + fishing.
  */
 export async function createPlayerSystem({
   scene,
@@ -36,6 +37,7 @@ export async function createPlayerSystem({
   canvas,
   collisionRoot,
   loadingManager,
+  fishingHoles = null,
   spawn = PLAYER.spawn,
 } = {}) {
   const { root: model, fbx, animations } = await loadPlayerModel(loadingManager);
@@ -59,8 +61,14 @@ export async function createPlayerSystem({
   const hitCounter = createSnowballHitCounter();
   hitCounter.setVisible(true);
   hitCounter.reset();
+  const fishingPrompt = createFishingPrompt();
 
   const _handPos = new THREE.Vector3();
+  const _rayOrigin = new THREE.Vector3();
+  const _rayDir = new THREE.Vector3();
+  const _mouseNdc = new THREE.Vector2();
+  const interactRay = new THREE.Raycaster();
+
   const snowballs = createSnowballSystem(scene, {
     getColliders: () => colliders,
     isSourceObject: (obj) => {
@@ -74,41 +82,105 @@ export async function createPlayerSystem({
     onHit: () => hitCounter.onHit(),
   });
 
+  const fishingSession = createFishingSession({
+    onStepAnim: (clipName) => animator.setFishingClip(clipName),
+    onComplete: () => {
+      if (animator.actions.holdingFish) {
+        animator.playOverride('holdingFish', 0.8);
+        setTimeout(() => endFishing(), 800);
+      } else {
+        endFishing();
+      }
+    },
+    onExit: () => endFishing(),
+  });
+
   const input = createPlayerInput(canvas);
   let throwCooldown = 0;
 
-  console.info(
-    '[player] spawned at',
-    playerRoot.position.toArray(),
-    'hand',
-    handBone?.name ?? '(fallback)',
-    'clips',
-    animations.map((a) => a.name),
-  );
+  function endFishing() {
+    if (!fishingSession.active) {
+      animator.exitFishing();
+      fishingPrompt.hide();
+      return;
+    }
+    fishingSession.exit();
+    animator.exitFishing();
+    fishingPrompt.hide();
+  }
+
+  function beginFishing(hole) {
+    fishingSession.start(hole.id);
+    animator.enterFishing();
+    fishingPrompt.showFishing(fishingSession.step);
+    console.info('[fishing] started at', hole.id, fishingSession.step);
+  }
 
   function getHandWorldPosition(out) {
     if (handBone) {
       handBone.getWorldPosition(out);
       return out;
     }
-    // Fallback if bone missing: roughly right-hand height in front of chest
     out.set(0.25, 1.0, 0.2);
     playerRoot.localToWorld(out);
     return out;
   }
 
-  /**
-   * Player.cs ThrowSnowball
-   */
   function throwSnowball() {
     getHandWorldPosition(_handPos);
     snowballs.spawn(_handPos, playerRoot.quaternion);
   }
 
+  function buildInteractRay(click) {
+    if (!click) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    _mouseNdc.x = ((click.clientX - rect.left) / rect.width) * 2 - 1;
+    _mouseNdc.y = -(((click.clientY - rect.top) / rect.height) * 2 - 1);
+    interactRay.setFromCamera(_mouseNdc, camera);
+    return interactRay;
+  }
+
+  function tryInteract(frame) {
+    if (!fishingHoles || fishingSession.active) return;
+
+    const ray = buildInteractRay(frame.interactClick);
+    if (!ray) return;
+
+    fishingHoles.updateRange(playerRoot);
+    const hole = fishingHoles.raycastInteract(ray);
+    if (hole) beginFishing(hole);
+  }
+
   function update(dt) {
     const frame = input.consume();
 
-    // Player.cs Simulate — throw before / with movement
+    if (fishingSession.active) {
+      if (frame.returnPressed) {
+        endFishing();
+      } else if (frame.interactClick) {
+        fishingSession.registerStruggleClick();
+      }
+
+      fishingSession.update(dt);
+      fishingPrompt.showFishing(
+        fishingSession.step,
+        fishingSession.struggleClicks,
+        fishingSession.struggleTarget,
+      );
+
+      playerCamera.applyLook(dt, frame, {});
+      animator.update(dt, { fishingMode: true });
+      playerCamera.follow(dt);
+      return;
+    }
+
+    if (frame.returnPressed) {
+      // unrestricted — no-op
+    }
+
+    if (frame.interactClick) tryInteract(frame);
+
     let throwStarted = false;
     if (frame.throwSnowball && throwCooldown <= 0) {
       throwCooldown = PLAYER.throwCooldown;
@@ -129,12 +201,19 @@ export async function createPlayerSystem({
     animator.update(dt, status);
     snowballs.update(dt);
     playerCamera.follow(dt);
+
+    if (fishingHoles) {
+      const inRange = fishingHoles.updateRange(playerRoot);
+      if (inRange) fishingPrompt.showNearHole();
+      else fishingPrompt.hide();
+    }
   }
 
   function dispose() {
     input.dispose();
     snowballs.dispose();
     hitCounter.setVisible(false);
+    fishingPrompt.hide();
     scene.remove(playerRoot);
   }
 
@@ -144,6 +223,7 @@ export async function createPlayerSystem({
     playerCamera,
     animator,
     hitCounter,
+    fishingSession,
     update,
     dispose,
   };

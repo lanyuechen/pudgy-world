@@ -123,6 +123,7 @@ export function createPlayerAnimator(modelRoot, animations = []) {
   let afkActive = false;
   let afkIndex = 0;
   let afkStepUntil = 0;
+  let fishingMode = false;
 
   const availableAfk = AFK_SEQUENCE.filter((name) => actions[name]);
 
@@ -200,7 +201,30 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     lastLocomotion = 'idle';
   }
 
-  function update(dt, { moving, grounded, sliding, jumpStarted, throwStarted }) {
+  function enterFishing() {
+    fishingMode = true;
+    afkActive = false;
+    idleTimer = 0;
+    overrideActive = false;
+    if (actions.fishingIdle) play('fishingIdle', 0.2);
+  }
+
+  function exitFishing() {
+    fishingMode = false;
+    restoreLocomotion(0.2);
+  }
+
+  function setFishingClip(name) {
+    if (!fishingMode || !actions[name]) return;
+    play(name, 0.15);
+  }
+
+  function update(dt, { moving, grounded, sliding, jumpStarted, throwStarted, fishingMode: fishing = false }) {
+    if (fishing || fishingMode) {
+      mixer.update(dt);
+      return;
+    }
+
     const now = performance.now() / 1000;
 
     if (throwStarted) {
@@ -257,5 +281,5 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     mixer.update(dt);
   }
 
-  return { mixer, actions, update, play, playOverride, restoreLocomotion };
+  return { mixer, actions, update, play, playOverride, restoreLocomotion, enterFishing, exitFishing, setFishingClip };
 }

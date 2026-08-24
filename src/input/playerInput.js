@@ -17,6 +17,7 @@ export function createPlayerInput(domElement) {
     jumpPressed: false,
     /** Unity: ThrowSnowballPressed |= pressed */
     throwSnowballRequested: false,
+    returnPressed: false,
     slidePressed: false,
     rotateCamera: false,
     /** Normalized pointer vs canvas center: left=-1 … right=+1 */
@@ -28,6 +29,12 @@ export function createPlayerInput(domElement) {
   let lookAccumX = 0;
   let lookAccumY = 0;
   let zoomAccum = 0;
+  let pointerDownX = 0;
+  let pointerDownY = 0;
+  let pointerDragged = false;
+  let pointerDown = false;
+  /** @type {{ clientX: number, clientY: number } | null} */
+  let interactClick = null;
 
   function refreshMove() {
     let x = 0;
@@ -64,10 +71,10 @@ export function createPlayerInput(domElement) {
       e.preventDefault();
     }
     if (e.code === 'Space' && !e.repeat) state.jumpPressed = true;
-    // Unity InputSystem_Actions ThrowSnowball → <Keyboard>/f
     if ((e.code === 'KeyF') && !e.repeat) {
       state.throwSnowballRequested = true;
     }
+    if (e.code === 'Escape' && !e.repeat) state.returnPressed = true;
     keys.add(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') state.slidePressed = true;
     refreshMove();
@@ -84,13 +91,25 @@ export function createPlayerInput(domElement) {
   function onPointerDown(e) {
     if (e.button !== 0) return;
     if (e.target !== domElement) return;
-    state.rotateCamera = true;
+    pointerDown = true;
+    pointerDownX = e.clientX;
+    pointerDownY = e.clientY;
+    pointerDragged = false;
+    state.rotateCamera = false;
     updatePointerNorm(e.clientX, e.clientY);
     domElement.setPointerCapture?.(e.pointerId);
   }
 
   function onPointerUp(e) {
     if (e.button !== 0) return;
+    const dragged =
+      pointerDragged ||
+      Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4;
+    if (pointerDown && !dragged && e.target === domElement) {
+      interactClick = { clientX: e.clientX, clientY: e.clientY };
+    }
+    pointerDown = false;
+    pointerDragged = false;
     state.rotateCamera = false;
     try {
       domElement.releasePointerCapture?.(e.pointerId);
@@ -101,6 +120,13 @@ export function createPlayerInput(domElement) {
 
   function onPointerMove(e) {
     updatePointerNorm(e.clientX, e.clientY);
+    if (!pointerDown || (e.buttons & 1) === 0) return;
+
+    const dragDist = Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY);
+    if (dragDist > 4) {
+      pointerDragged = true;
+      state.rotateCamera = true;
+    }
     if (!state.rotateCamera) return;
     lookAccumX += e.movementX;
     lookAccumY += e.movementY;
@@ -124,6 +150,8 @@ export function createPlayerInput(domElement) {
     state.moveY = 0;
     state.slidePressed = false;
     state.rotateCamera = false;
+    pointerDown = false;
+    pointerDragged = false;
     state.pointerNX = 0;
     state.pointerNY = 0;
   }
@@ -149,6 +177,10 @@ export function createPlayerInput(domElement) {
     state.jumpPressed = false;
     const throwSnowball = state.throwSnowballRequested;
     state.throwSnowballRequested = false;
+    const returnPressed = state.returnPressed;
+    state.returnPressed = false;
+    const click = interactClick;
+    interactClick = null;
     return {
       moveX: state.moveX,
       moveY: state.moveY,
@@ -157,6 +189,8 @@ export function createPlayerInput(domElement) {
       zoomDelta,
       jump,
       throwSnowball,
+      returnPressed,
+      interactClick: click,
       slide: state.slidePressed,
       rotateCamera: state.rotateCamera,
       pointerNX: state.pointerNX,
