@@ -3,6 +3,7 @@
  * Move: WASD → Vector2 (x=A/D, y=W/S)
  * Sprint/Slide: Shift → OnSlide
  * Jump: Space
+ * ThrowSnowball: F (Keyboard) / buttonWest (Gamepad)
  * RotateCamera: hold LMB · Look: pointer delta
  * Soft look: pointer position vs canvas center (normalized [-1,1])
  */
@@ -14,6 +15,8 @@ export function createPlayerInput(domElement) {
     moveX: 0,
     moveY: 0,
     jumpPressed: false,
+    /** Unity: ThrowSnowballPressed |= pressed */
+    throwSnowballRequested: false,
     slidePressed: false,
     rotateCamera: false,
     /** Normalized pointer vs canvas center: left=-1 … right=+1 */
@@ -61,6 +64,10 @@ export function createPlayerInput(domElement) {
       e.preventDefault();
     }
     if (e.code === 'Space' && !e.repeat) state.jumpPressed = true;
+    // Unity InputSystem_Actions ThrowSnowball → <Keyboard>/f
+    if ((e.code === 'KeyF') && !e.repeat) {
+      state.throwSnowballRequested = true;
+    }
     keys.add(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') state.slidePressed = true;
     refreshMove();
@@ -140,6 +147,8 @@ export function createPlayerInput(domElement) {
     zoomAccum = 0;
     const jump = state.jumpPressed;
     state.jumpPressed = false;
+    const throwSnowball = state.throwSnowballRequested;
+    state.throwSnowballRequested = false;
     return {
       moveX: state.moveX,
       moveY: state.moveY,
@@ -147,6 +156,7 @@ export function createPlayerInput(domElement) {
       lookY,
       zoomDelta,
       jump,
+      throwSnowball,
       slide: state.slidePressed,
       rotateCamera: state.rotateCamera,
       pointerNX: state.pointerNX,

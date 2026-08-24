@@ -5,6 +5,7 @@ import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
+import { remapFbxTextureUrl } from './config/assetUrl.js';
 import { createOutlineComposer } from './rendering/outlineComposer.js';
 import { syncToonLightDirection } from './rendering/toonMaterial.js';
 
@@ -61,6 +62,7 @@ function showLoading(visible) {
 }
 
 const loadingManager = new THREE.LoadingManager();
+loadingManager.setURLModifier(remapFbxTextureUrl);
 loadingManager.onProgress = (_url, loaded, total) => {
   if (!total) return;
   setProgress(0.15 + (loaded / total) * 0.7, `Loading assets… (${loaded}/${total})`);
@@ -105,7 +107,7 @@ function bindOutlineComposer(scene) {
 
 function setHint(playable) {
   hintEl.textContent = playable
-    ? 'WASD move · Shift slide · Space jump · Hold LMB look · Scroll zoom'
+    ? 'WASD move · Shift slide · Space jump · F throw · Hold LMB look · Scroll zoom'
     : 'LMB drag: orbit · RMB / wheel: pan / zoom · Space: reset';
 }
 

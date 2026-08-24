@@ -80,6 +80,38 @@ body,
   line-height: 1.45;
 }
 
+#snowball-hit-counter {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 0 0 0;
+  color: #e8fbff;
+  font: 700 22px/1 'Segoe UI', system-ui, sans-serif;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  user-select: none;
+}
+
+#snowball-hit-counter[hidden] {
+  display: none;
+}
+
+#snowball-hit-counter .snowball-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #d8eef8 55%, #b7d4e2);
+  box-shadow: inset 0 -2px 4px rgba(0, 40, 60, 0.2), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+#snowball-hit-counter .snowball-count {
+  min-width: 1.5ch;
+}
+
 #config {
   position: fixed;
   top: 12px;

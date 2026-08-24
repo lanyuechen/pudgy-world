@@ -62,6 +62,18 @@ export const PLAYER = {
   softLookFollowSpeed: 1.6, // was 8; ~5× slower ease to screen offset
   softLookDeadzone: 0.05,
 
+  // Player.prefab — Throwing Snowballs
+  /** Unity InputSystem_Actions: Keyboard F / Gamepad West */
+  throwCooldown: 1,
+  /** Player.prefab override duration (not C# default 1.0) */
+  throwAnimationDuration: 0.25,
+  /** Snowball.prefab _initialVelocity — applied in player local space */
+  snowballInitialVelocity: { x: 0, y: 2, z: 12.5 },
+  /** Snowball.prefab SphereCollider radius (Visuals scale 0.25 × default sphere 0.5) */
+  snowballRadius: 0.125,
+  /** Bone for spawn (Player._handTransform on armature) */
+  snowballHandBones: ['R_Arm_02_end', 'R_Arm_02'],
+
   // Spawn (plaza-ish; refined by ground ray)
   spawn: { x: -20, y: 20, z: -22 },
 };

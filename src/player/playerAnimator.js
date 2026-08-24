@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import { PLAYER } from '../config/playerConfig.js';
 
 const CLIP_ALIASES = {
   idle: ['Armature|Idle', 'Idle', 'idle'],
   walk: ['Armature|Walk', 'Walk', 'walk'],
   jump: ['Armature|Air', 'Air', 'jump', 'Jump'],
   slide: ['Armature|BellySurfing', 'BellySurfing', 'slide', 'Slide', 'Armature|BellySlide'],
+  throw: ['Armature|Throw', 'Throw', 'throw'],
 };
 
 function findClip(animations, aliases) {
@@ -12,7 +14,6 @@ function findClip(animations, aliases) {
     const hit = animations.find((a) => a.name === name || a.name.endsWith(`|${name}`));
     if (hit) return hit;
   }
-  // fuzzy
   for (const name of aliases) {
     const key = name.toLowerCase();
     const hit = animations.find((a) => a.name.toLowerCase().includes(key));
@@ -22,7 +23,7 @@ function findClip(animations, aliases) {
 }
 
 /**
- * Animation mixer matching Unity triggers: idle / walk / slide / jump.
+ * Animation mixer matching Unity PlayerAnimator triggers + override (throw).
  */
 export function createPlayerAnimator(modelRoot, animations = []) {
   const mixer = new THREE.AnimationMixer(modelRoot);
@@ -38,7 +39,7 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     action.enabled = true;
     action.setEffectiveTimeScale(1);
     action.setEffectiveWeight(1);
-    if (key === 'jump') {
+    if (key === 'jump' || key === 'throw') {
       action.setLoop(THREE.LoopOnce, 1);
       action.clampWhenFinished = true;
     } else {
@@ -48,7 +49,10 @@ export function createPlayerAnimator(modelRoot, animations = []) {
   }
 
   let current = null;
+  let lastLocomotion = 'idle';
   let jumpLockedUntil = 0;
+  let overrideUntil = 0;
+  let overrideActive = false;
 
   function play(name, fade = 0.2) {
     const next = actions[name];
@@ -63,16 +67,43 @@ export function createPlayerAnimator(modelRoot, animations = []) {
       next.fadeIn(fade);
     }
     current = next;
+    if (name !== 'throw') lastLocomotion = name;
   }
 
-  // Start in idle
+  /**
+   * Unity PlayerAnimator.HandleOverrideAnimationTriggerRequested:
+   * play trigger, ignore locomotion until duration, then restore last trigger.
+   */
+  function playOverride(name, duration = PLAYER.throwAnimationDuration) {
+    if (!actions[name]) return;
+    overrideActive = true;
+    overrideUntil = performance.now() / 1000 + duration;
+    play(name, 0.08);
+  }
+
   if (actions.idle) {
     actions.idle.play();
     current = actions.idle;
+    lastLocomotion = 'idle';
   }
 
-  function update(dt, { moving, grounded, sliding, jumpStarted }) {
+  function update(dt, { moving, grounded, sliding, jumpStarted, throwStarted }) {
     const now = performance.now() / 1000;
+
+    if (throwStarted) {
+      playOverride('throw', PLAYER.throwAnimationDuration);
+      mixer.update(dt);
+      return;
+    }
+
+    if (overrideActive) {
+      if (now >= overrideUntil) {
+        overrideActive = false;
+        if (actions[lastLocomotion]) play(lastLocomotion, 0.15);
+      }
+      mixer.update(dt);
+      return;
+    }
 
     if (jumpStarted && actions.jump) {
       play('jump', 0.08);
@@ -89,7 +120,6 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     if (!grounded && actions.jump) {
       if (current !== actions.jump) play('jump', 0.1);
     } else if (sliding && actions.slide) {
-      // Unity: slide when isSliding && |vel| >= threshold (moving)
       if (moving) play('slide', 0.15);
       else if (actions.idle) play('idle', 0.2);
     } else if (moving && actions.walk) {
@@ -101,5 +131,5 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     mixer.update(dt);
   }
 
-  return { mixer, actions, update, play };
+  return { mixer, actions, update, play, playOverride };
 }
