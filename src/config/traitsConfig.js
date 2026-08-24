@@ -2,6 +2,7 @@
  * PlayerTrait / TraitEquipper — cosmetic + fishing trait catalog.
  */
 import { assetUrl } from './assetUrl.js';
+import { resolveCosmeticTraitType } from './fullBodyTraits.js';
 import { GENERATED_TRAIT_CATALOG } from './traitsCatalog.generated.js';
 
 export const TRAIT_TYPE = {
@@ -17,9 +18,14 @@ export const TRAIT_TYPE = {
 
 /** @typedef {{ id: string, type: string, label: string, fbx: string }} TraitDefinition */
 
+const COSMETIC_CATALOG = GENERATED_TRAIT_CATALOG.map((trait) => ({
+  ...trait,
+  type: resolveCosmeticTraitType(trait.id, trait.type),
+}));
+
 /** @type {TraitDefinition[]} */
 export const TRAIT_CATALOG = [
-  ...GENERATED_TRAIT_CATALOG,
+  ...COSMETIC_CATALOG,
   // Fishing (FishingMovementState defaults)
   { id: 'rod_wooden_default', type: TRAIT_TYPE.Rod, label: 'Wooden Rod', fbx: assetUrl('/assets/models/player/fishing/Rod_Wooden_Default.fbx') },
   { id: 'rope_white_default', type: TRAIT_TYPE.Rope, label: 'White Rope', fbx: assetUrl('/assets/models/player/fishing/Rope_White_Default.fbx') },
@@ -40,6 +46,7 @@ export const DEFAULT_TRAIT_LOADOUT = {
   [TRAIT_TYPE.Head]: null,
   [TRAIT_TYPE.Face]: null,
   [TRAIT_TYPE.Body]: null,
+  [TRAIT_TYPE.FullBody]: null,
 };
 
 /** Traits shown in the customization panel (excludes fishing gear). */
@@ -48,6 +55,7 @@ export const COSMETIC_TRAIT_TYPES = [
   TRAIT_TYPE.Head,
   TRAIT_TYPE.Face,
   TRAIT_TYPE.Body,
+  TRAIT_TYPE.FullBody,
 ];
 
 export function traitsForType(type) {
@@ -59,4 +67,5 @@ export const TRAIT_TYPE_LABELS = {
   [TRAIT_TYPE.Head]: 'Head',
   [TRAIT_TYPE.Face]: 'Face',
   [TRAIT_TYPE.Body]: 'Body',
+  [TRAIT_TYPE.FullBody]: 'Full Body',
 };

@@ -5,7 +5,7 @@ import {
 } from '../config/traitsConfig.js';
 
 /**
- * Settings-panel trait picker (Skin / Head / Face / Body).
+ * Settings-panel trait picker (Skin / Head / Face / Body / Full Body).
  */
 export function createTraitCustomizer(traitEquipper, containerEl) {
   if (!traitEquipper || !containerEl) {
@@ -57,6 +57,7 @@ export function createTraitCustomizer(traitEquipper, containerEl) {
         traitEquipper.removeTraitOfType(type);
       } finally {
         select.disabled = false;
+        syncFromEquipper();
       }
     });
 

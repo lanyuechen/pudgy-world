@@ -5,6 +5,7 @@ import {
   TRAIT_BY_ID,
   TRAIT_TYPE,
 } from '../config/traitsConfig.js';
+import { CLEARS_FULL_BODY, FULL_BODY_CLEARS } from '../config/fullBodyTraits.js';
 import { PLAYER } from '../config/playerConfig.js';
 import { normalizeFbxToMeters } from '../config/units.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
@@ -135,13 +136,13 @@ export async function createTraitEquipper(playerFbx, loadingManager) {
     }
   }
 
+  /** Unity TraitEquipper conflict rules for FullBody ↔ Head/Body. */
   function applyConflictRules(type) {
-    if (type === TRAIT_TYPE.Head || type === TRAIT_TYPE.Body) {
-      hideTraitType(TRAIT_TYPE.FullBody);
+    if (CLEARS_FULL_BODY.includes(type)) {
+      removeTraitOfType(TRAIT_TYPE.FullBody);
     }
     if (type === TRAIT_TYPE.FullBody) {
-      hideTraitType(TRAIT_TYPE.Head);
-      hideTraitType(TRAIT_TYPE.Body);
+      for (const slot of FULL_BODY_CLEARS) removeTraitOfType(slot);
     }
   }
 

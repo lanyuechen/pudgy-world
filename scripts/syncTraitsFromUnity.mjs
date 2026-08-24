@@ -26,6 +26,7 @@ const TYPE_MAP = {
   1: 'head',
   2: 'face',
   3: 'body',
+  4: 'fullBody',
 };
 
 const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'mythical', 'default']);
