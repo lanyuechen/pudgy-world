@@ -19,21 +19,46 @@ export const PLAYER = {
   rotationSpeed: 600, // deg/s
   gravity: -9.81,
 
-  groundRayStartHeight: 0.2,
-  groundRayLength: 0.45,
-  skinWidth: 0.05,
+  // Ground check (UnrestrictedMovementState)
+  groundRayStartHeight: 0.01,
+  groundRayRange: 0.05,
+  /** Extra length for kinematic landing (Unity uses Rigidbody collider) */
+  groundSnapProbe: 1.2,
+  skinWidth: 0.02,
 
   // CameraReferencePoint local offset on player
   cameraReference: { x: 0, y: 1, z: 1 },
 
-  // PlayerCamera
+  // PlayerCamera.prefab (not C# field defaults)
   cameraDistance: 3,
+  /** Closest boom — current third-person gameplay distance */
+  cameraDistanceMin: 5,
+  /** Farthest boom — enough to frame the whole plaza */
+  cameraDistanceMax: 90,
+  /** Multiplier on wheel delta (pixels/lines → meters) */
+  cameraZoomSpeed: 0.08,
+  /** Smooth follow toward target zoom distance */
+  cameraZoomFollowSpeed: 10,
   cameraFollowSpeed: 5,
-  mouseSensitivityX: 180,
-  mouseSensitivityY: 120,
+  mouseSensitivityX: 90,
+  mouseSensitivityY: 60,
+  /**
+   * Browser pointer `movementX/Y` is raw pixels; Unity Pointer/delta with sens 90
+   * feels similar when scaled ~0.1–0.15 before sens*dt.
+   */
+  mouseDeltaScale: 0.12,
   minPitch: -35,
   maxPitch: 60,
-  autoYawSpeed: 180,
+  autoYawSpeed: 50,
+
+  /**
+   * Screen-position soft look (idle only): mouse vs center → capped yaw/pitch.
+   * Disabled while moving. Edge ≈ ±softLookYawDeg.
+   */
+  softLookYawDeg: 5,
+  softLookPitchDeg: 3,
+  softLookFollowSpeed: 1.6, // was 8; ~5× slower ease to screen offset
+  softLookDeadzone: 0.05,
 
   // Spawn (plaza-ish; refined by ground ray)
   spawn: { x: -20, y: 20, z: -22 },

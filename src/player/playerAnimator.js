@@ -88,8 +88,10 @@ export function createPlayerAnimator(modelRoot, animations = []) {
 
     if (!grounded && actions.jump) {
       if (current !== actions.jump) play('jump', 0.1);
-    } else if (sliding && moving && actions.slide) {
-      play('slide', 0.15);
+    } else if (sliding && actions.slide) {
+      // Unity: slide when isSliding && |vel| >= threshold (moving)
+      if (moving) play('slide', 0.15);
+      else if (actions.idle) play('idle', 0.2);
     } else if (moving && actions.walk) {
       play('walk', 0.15);
     } else if (actions.idle) {

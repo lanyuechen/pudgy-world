@@ -71,43 +71,93 @@ body,
 }
 
 #hint {
-  position: fixed;
-  left: 12px;
-  bottom: 12px;
-  z-index: 5;
-  color: rgba(255, 255, 255, 0.7);
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(232, 251, 255, 0.65);
   font-size: 12px;
-  pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 500;
+  line-height: 1.45;
 }
 
-#scene-switcher {
+#config {
   position: fixed;
   top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
   z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(8, 28, 36, 0.72);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+#config-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+#config-toggle:hover {
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+#config-toggle[aria-expanded='true'] {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+#config-toggle:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+
+#config-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(300px, calc(100vw - 24px));
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(8, 28, 36, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   color: #e8fbff;
   font: 600 13px/1.2 'Segoe UI', system-ui, sans-serif;
 }
 
-#scene-switcher .label {
+#config-panel[hidden] {
+  display: none;
+}
+
+#config-panel .config-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+#config-panel .config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#config-panel .label {
   opacity: 0.75;
   white-space: nowrap;
 }
 
 #scene-select {
   appearance: none;
-  min-width: min(280px, 62vw);
-  max-width: 72vw;
+  width: 100%;
   padding: 8px 36px 8px 12px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;

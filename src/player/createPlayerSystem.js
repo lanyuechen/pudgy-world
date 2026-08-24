@@ -53,13 +53,14 @@ export async function createPlayerSystem({
 
   function update(dt) {
     const frame = input.consume();
-    playerCamera.applyLook(dt, frame);
+    // Move uses camera axes from last frame; look/auto-yaw after move (Unity LateUpdate camera)
     const status = controller.update(
       dt,
       frame,
       playerCamera.getForward(),
       playerCamera.getRight(),
     );
+    playerCamera.applyLook(dt, frame, status);
     animator.update(dt, status);
     playerCamera.follow(dt);
   }

@@ -1,8 +1,13 @@
 /**
  * Keyboard / mouse input matching Unity InputSystem_Actions.
  * Move: WASD → Vector2 (x=A/D, y=W/S)
- * RotateCamera: hold LMB · Look: pointer delta while held
+ * Sprint/Slide: Shift → OnSlide
+ * Jump: Space
+ * RotateCamera: hold LMB · Look: pointer delta
+ * Soft look: pointer position vs canvas center (normalized [-1,1])
  */
+import { PLAYER } from '../config/playerConfig.js';
+
 export function createPlayerInput(domElement) {
   const keys = new Set();
   const state = {
@@ -11,10 +16,15 @@ export function createPlayerInput(domElement) {
     jumpPressed: false,
     slidePressed: false,
     rotateCamera: false,
+    /** Normalized pointer vs canvas center: left=-1 … right=+1 */
+    pointerNX: 0,
+    /** Normalized pointer vs canvas center: bottom=-1 … top=+1 */
+    pointerNY: 0,
   };
 
   let lookAccumX = 0;
   let lookAccumY = 0;
+  let zoomAccum = 0;
 
   function refreshMove() {
     let x = 0;
@@ -23,9 +33,7 @@ export function createPlayerInput(domElement) {
     if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
     if (keys.has('KeyW') || keys.has('ArrowUp')) y += 1;
     if (keys.has('KeyS') || keys.has('ArrowDown')) y -= 1;
-    const len = Math.hypot(x, y) || 1;
-    state.moveX = x / Math.max(len, 1);
-    state.moveY = y / Math.max(len, 1);
+    const len = Math.hypot(x, y);
     if (len > 1) {
       state.moveX = x / len;
       state.moveY = y / len;
@@ -35,11 +43,24 @@ export function createPlayerInput(domElement) {
     }
   }
 
+  function updatePointerNorm(clientX, clientY) {
+    const rect = domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = -(((clientY - rect.top) / rect.height) * 2 - 1);
+    state.pointerNX = THREE_CLAMP(nx, -1, 1);
+    state.pointerNY = THREE_CLAMP(ny, -1, 1);
+  }
+
+  function THREE_CLAMP(v, lo, hi) {
+    return Math.min(hi, Math.max(lo, v));
+  }
+
   function onKeyDown(e) {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
       e.preventDefault();
     }
-    if (e.code === 'Space') state.jumpPressed = true;
+    if (e.code === 'Space' && !e.repeat) state.jumpPressed = true;
     keys.add(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') state.slidePressed = true;
     refreshMove();
@@ -55,9 +76,9 @@ export function createPlayerInput(domElement) {
 
   function onPointerDown(e) {
     if (e.button !== 0) return;
-    // Ignore clicks on UI (scene select)
     if (e.target !== domElement) return;
     state.rotateCamera = true;
+    updatePointerNorm(e.clientX, e.clientY);
     domElement.setPointerCapture?.(e.pointerId);
   }
 
@@ -72,9 +93,22 @@ export function createPlayerInput(domElement) {
   }
 
   function onPointerMove(e) {
+    updatePointerNorm(e.clientX, e.clientY);
     if (!state.rotateCamera) return;
     lookAccumX += e.movementX;
     lookAccumY += e.movementY;
+  }
+
+  function onPointerLeave() {
+    // Ease soft-look back to center when cursor leaves the game view
+    state.pointerNX = 0;
+    state.pointerNY = 0;
+  }
+
+  function onWheel(e) {
+    e.preventDefault();
+    // Positive deltaY = scroll down = zoom out (increase distance)
+    zoomAccum += e.deltaY;
   }
 
   function onBlur() {
@@ -83,6 +117,8 @@ export function createPlayerInput(domElement) {
     state.moveY = 0;
     state.slidePressed = false;
     state.rotateCamera = false;
+    state.pointerNX = 0;
+    state.pointerNY = 0;
   }
 
   window.addEventListener('keydown', onKeyDown);
@@ -90,14 +126,18 @@ export function createPlayerInput(domElement) {
   window.addEventListener('blur', onBlur);
   domElement.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointerup', onPointerUp);
-  window.addEventListener('pointermove', onPointerMove);
+  domElement.addEventListener('pointermove', onPointerMove);
+  domElement.addEventListener('pointerleave', onPointerLeave);
+  domElement.addEventListener('wheel', onWheel, { passive: false });
   domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
   function consume() {
-    const lookX = lookAccumX * 0.08;
-    const lookY = lookAccumY * 0.08;
+    const lookX = lookAccumX * PLAYER.mouseDeltaScale;
+    const lookY = lookAccumY * PLAYER.mouseDeltaScale;
+    const zoomDelta = zoomAccum;
     lookAccumX = 0;
     lookAccumY = 0;
+    zoomAccum = 0;
     const jump = state.jumpPressed;
     state.jumpPressed = false;
     return {
@@ -105,9 +145,12 @@ export function createPlayerInput(domElement) {
       moveY: state.moveY,
       lookX,
       lookY,
+      zoomDelta,
       jump,
       slide: state.slidePressed,
       rotateCamera: state.rotateCamera,
+      pointerNX: state.pointerNX,
+      pointerNY: state.pointerNY,
     };
   }
 
@@ -117,7 +160,9 @@ export function createPlayerInput(domElement) {
     window.removeEventListener('blur', onBlur);
     domElement.removeEventListener('pointerdown', onPointerDown);
     window.removeEventListener('pointerup', onPointerUp);
-    window.removeEventListener('pointermove', onPointerMove);
+    domElement.removeEventListener('pointermove', onPointerMove);
+    domElement.removeEventListener('pointerleave', onPointerLeave);
+    domElement.removeEventListener('wheel', onWheel);
   }
 
   return { consume, dispose };

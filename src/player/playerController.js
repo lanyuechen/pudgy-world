@@ -2,19 +2,28 @@ import * as THREE from 'three';
 import { PLAYER } from '../config/playerConfig.js';
 
 /**
- * Camera-relative movement matching UnrestrictedMovementState:
- * moveDir = cameraForward * input.y + cameraRight * input.x
- * W/S → forward/back, A/D → strafe. Player faces move dir; camera is independent.
+ * Camera-relative locomotion matching UnrestrictedMovementState + Rigidbody:
+ *
+ *   targetVel = moveDir * moveSpeed
+ *   v += targetVel * acceleration * dt          // AddForce Force, mass 1
+ *   if jump && grounded: v.y += jumpForce        // Impulse
+ *   v.xz -= v.xz * horizontalDamping * dt
+ *   if |v.xz| > moveSpeed: v.xz = targetVel.xz   // snap, not magnitude clamp
+ *   v.y += gravity * dt
+ *
+ * Airborne keeps last grounded moveSpeed (Unity state.moveSpeed).
  */
 export function createPlayerController(playerRoot, { colliders = [] } = {}) {
   const velocity = new THREE.Vector3();
   let grounded = false;
   let facing = 0;
+  let moveSpeed = PLAYER.walkSpeed;
 
   const down = new THREE.Vector3(0, -1, 0);
   const raycaster = new THREE.Raycaster();
+  const _origin = new THREE.Vector3();
   const _move = new THREE.Vector3();
-  const _target = new THREE.Vector3();
+  const _targetVel = new THREE.Vector3();
   const _horizontal = new THREE.Vector3();
 
   function setColliders(meshes) {
@@ -22,12 +31,20 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
   }
 
   function raycastGround(fromY, maxDist) {
-    raycaster.set(
-      new THREE.Vector3(playerRoot.position.x, fromY, playerRoot.position.z),
-      down,
-    );
+    _origin.set(playerRoot.position.x, fromY, playerRoot.position.z);
+    raycaster.set(_origin, down);
     raycaster.far = maxDist;
-    return raycaster.intersectObjects(colliders, false)[0] ?? null;
+    const hits = raycaster.intersectObjects(colliders, false);
+    return hits[0] ?? null;
+  }
+
+  /** Unity IsGrounded: short ray from feet. */
+  function unityGrounded() {
+    const hit = raycastGround(
+      playerRoot.position.y + PLAYER.groundRayStartHeight,
+      PLAYER.groundRayRange,
+    );
+    return !!hit;
   }
 
   function snapToGroundIfNeeded() {
@@ -36,11 +53,28 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
     playerRoot.position.y = hit.point.y + PLAYER.skinWidth;
     velocity.set(0, 0, 0);
     grounded = true;
+    moveSpeed = PLAYER.walkSpeed;
     return true;
   }
 
   function update(dt, input, cameraForward, cameraRight) {
-    // Exact Unity formula
+    // --- Ground state (probe + Unity short ray) ---
+    const probe = raycastGround(
+      playerRoot.position.y + PLAYER.centerY,
+      PLAYER.centerY + PLAYER.groundSnapProbe,
+    );
+    const nearGround =
+      !!probe &&
+      playerRoot.position.y <= probe.point.y + PLAYER.skinWidth + 0.08 &&
+      velocity.y <= 0.05;
+    grounded = nearGround || unityGrounded();
+
+    // --- Speed (Unity: airborne keeps state.moveSpeed) ---
+    if (grounded) {
+      moveSpeed = input.slide ? PLAYER.slideSpeed : PLAYER.walkSpeed;
+    }
+
+    // --- Camera-relative move dir ---
     _move
       .set(0, 0, 0)
       .addScaledVector(cameraForward, input.moveY)
@@ -48,30 +82,10 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
     _move.y = 0;
     if (_move.lengthSq() > 1) _move.normalize();
 
-    const speed = grounded
-      ? input.slide
-        ? PLAYER.slideSpeed
-        : PLAYER.walkSpeed
-      : Math.max(Math.hypot(velocity.x, velocity.z), PLAYER.walkSpeed * 0.5);
+    _targetVel.copy(_move).multiplyScalar(moveSpeed);
 
-    _target.copy(_move).multiplyScalar(speed);
-
-    _horizontal.set(velocity.x, 0, velocity.z);
-    const t = 1 - Math.exp(-PLAYER.acceleration * dt);
-    _horizontal.lerp(_target, t);
-
-    if (_move.lengthSq() < 1e-6) {
-      _horizontal.multiplyScalar(1 / (1 + PLAYER.horizontalDamping * dt));
-    }
-
-    const hLen = _horizontal.length();
-    if (hLen > speed && speed > 1e-6) _horizontal.multiplyScalar(speed / hLen);
-
-    velocity.x = _horizontal.x;
-    velocity.z = _horizontal.z;
-
-    // Face travel direction only — does NOT drive the camera
-    if (_move.lengthSq() > 1e-4) {
+    // --- Face move direction (RotateTowards 600°/s) ---
+    if (_move.lengthSq() > 1e-6) {
       const targetFacing = Math.atan2(_move.x, _move.z);
       const maxStep = THREE.MathUtils.degToRad(PLAYER.rotationSpeed) * dt;
       let delta = targetFacing - facing;
@@ -81,24 +95,48 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
       playerRoot.rotation.y = facing;
     }
 
+    // --- Forces (mass 1) ---
+    velocity.x += _targetVel.x * PLAYER.acceleration * dt;
+    velocity.z += _targetVel.z * PLAYER.acceleration * dt;
+
     let jumpStarted = false;
     if (input.jump && grounded) {
-      velocity.y = PLAYER.jumpForce;
+      velocity.y += PLAYER.jumpForce;
       grounded = false;
       jumpStarted = true;
     }
 
+    _horizontal.set(velocity.x, 0, velocity.z);
+    velocity.x -= _horizontal.x * PLAYER.horizontalDamping * dt;
+    velocity.z -= _horizontal.z * PLAYER.horizontalDamping * dt;
+
+    _horizontal.set(velocity.x, 0, velocity.z);
+    if (_horizontal.length() > moveSpeed) {
+      // Unity: snap to targetVelocity xz (not magnitude clamp)
+      velocity.x = _targetVel.x;
+      velocity.z = _targetVel.z;
+    }
+
     velocity.y += PLAYER.gravity * dt;
+
     playerRoot.position.x += velocity.x * dt;
     playerRoot.position.y += velocity.y * dt;
     playerRoot.position.z += velocity.z * dt;
 
-    const hit = raycastGround(playerRoot.position.y + 0.5, 2.5);
-    if (hit && velocity.y <= 0 && playerRoot.position.y <= hit.point.y + 0.4) {
-      playerRoot.position.y = hit.point.y + PLAYER.skinWidth;
+    // --- Land / stick ---
+    const landHit = raycastGround(
+      playerRoot.position.y + PLAYER.centerY,
+      PLAYER.centerY + PLAYER.groundSnapProbe,
+    );
+    if (
+      landHit &&
+      velocity.y <= 0 &&
+      playerRoot.position.y <= landHit.point.y + PLAYER.skinWidth + 0.05
+    ) {
+      playerRoot.position.y = landHit.point.y + PLAYER.skinWidth;
       velocity.y = 0;
       grounded = true;
-    } else if (!hit || playerRoot.position.y > (hit?.point.y ?? 0) + 0.4) {
+    } else if (!unityGrounded() && !(landHit && playerRoot.position.y <= landHit.point.y + 0.1)) {
       grounded = false;
     }
 
@@ -108,12 +146,15 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
       snapToGroundIfNeeded();
     }
 
-    const moving = _move.lengthSq() > 1e-4;
+    const moving = _horizontal.set(velocity.x, 0, velocity.z).length() >= 1; // Unity _movingThreshold
     return {
       grounded,
       moving,
-      sliding: grounded && moving && !!input.slide,
+      // Unity: isSliding = grounded && slidePressed (no move required)
+      sliding: grounded && !!input.slide,
       jumpStarted,
+      velocity: velocity.clone(),
+      facingYawDeg: THREE.MathUtils.radToDeg(facing),
     };
   }
 
@@ -123,6 +164,9 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
     snapToGroundIfNeeded,
     get grounded() {
       return grounded;
+    },
+    get velocity() {
+      return velocity;
     },
   };
 }

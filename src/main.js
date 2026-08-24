@@ -17,6 +17,9 @@ const loadingBar = document.getElementById('loading-bar');
 const loadingStatus = document.getElementById('loading-status');
 const selectEl = document.getElementById('scene-select');
 const hintEl = document.getElementById('hint');
+const configRoot = document.getElementById('config');
+const configToggle = document.getElementById('config-toggle');
+const configPanel = document.getElementById('config-panel');
 
 for (const opt of sceneOptions) {
   const el = document.createElement('option');
@@ -25,6 +28,27 @@ for (const opt of sceneOptions) {
   selectEl.appendChild(el);
 }
 selectEl.value = DEFAULT_SCENE_ID;
+
+function setConfigOpen(open) {
+  configPanel.hidden = !open;
+  configToggle.setAttribute('aria-expanded', String(open));
+  configToggle.setAttribute('aria-label', open ? 'Close settings' : 'Open settings');
+}
+
+configToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setConfigOpen(configPanel.hidden);
+});
+
+document.addEventListener('pointerdown', (e) => {
+  if (configPanel.hidden) return;
+  if (configRoot.contains(e.target)) return;
+  setConfigOpen(false);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !configPanel.hidden) setConfigOpen(false);
+});
 
 function setProgress(ratio, status) {
   loadingBar.style.width = `${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%`;
@@ -81,7 +105,7 @@ function bindOutlineComposer(scene) {
 
 function setHint(playable) {
   hintEl.textContent = playable
-    ? 'WASD move · Shift slide · Space jump · Hold LMB look'
+    ? 'WASD move · Shift slide · Space jump · Hold LMB look · Scroll zoom'
     : 'LMB drag: orbit · RMB / wheel: pan / zoom · Space: reset';
 }
 
