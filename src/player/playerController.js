@@ -85,14 +85,18 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
     _targetVel.copy(_move).multiplyScalar(moveSpeed);
 
     // --- Face move direction (RotateTowards 600°/s) ---
+    let turning = false;
     if (_move.lengthSq() > 1e-6) {
       const targetFacing = Math.atan2(_move.x, _move.z);
       const maxStep = THREE.MathUtils.degToRad(PLAYER.rotationSpeed) * dt;
       let delta = targetFacing - facing;
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
-      facing += Math.abs(delta) <= maxStep ? delta : Math.sign(delta) * maxStep;
-      playerRoot.rotation.y = facing;
+      if (Math.abs(delta) > 1e-5) {
+        facing += Math.abs(delta) <= maxStep ? delta : Math.sign(delta) * maxStep;
+        playerRoot.rotation.y = facing;
+        turning = true;
+      }
     }
 
     // --- Forces (mass 1) ---
@@ -150,6 +154,7 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
     return {
       grounded,
       moving,
+      turning,
       // Unity: isSliding = grounded && slidePressed (no move required)
       sliding: grounded && !!input.slide,
       jumpStarted,

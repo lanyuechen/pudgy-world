@@ -46,10 +46,10 @@ export const PLAYER = {
    * Browser pointer `movementX/Y` is raw pixels; Unity Pointer/delta with sens 90
    * feels similar when scaled ~0.1–0.15 before sens*dt.
    */
-  mouseDeltaScale: 0.12,
+  mouseDeltaScale: 0.3,
   minPitch: -35,
   maxPitch: 60,
-  autoYawSpeed: 50,
+  autoYawSpeed: 100,
 
   /**
    * Screen-position soft look (idle only): mouse vs center → capped yaw/pitch.

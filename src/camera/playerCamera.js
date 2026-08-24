@@ -90,7 +90,7 @@ export function createPlayerCamera(camera) {
   /**
    * @param {number} dt
    * @param {{ lookX: number, lookY: number, rotateCamera: boolean, pointerNX?: number, pointerNY?: number, zoomDelta?: number }} input
-   * @param {{ moving?: boolean, facingYawDeg?: number, velocity?: { length: () => number } }} [status]
+   * @param {{ moving?: boolean, turning?: boolean, facingYawDeg?: number, velocity?: { length: () => number } }} [status]
    */
   function applyLook(dt, input, status = {}) {
     const zoomDelta = input.zoomDelta ?? 0;
@@ -108,6 +108,7 @@ export function createPlayerCamera(camera) {
       status.velocity?.length?.() ??
       (status.moving ? 1 : 0);
     const isMoving = speed > 1e-3;
+    const isTurning = !!status.turning;
 
     function bakeSoftLook() {
       if (softYaw === 0 && softPitch === 0) return;
@@ -120,25 +121,30 @@ export function createPlayerCamera(camera) {
 
     if (input.rotateCamera) {
       bakeSoftLook();
-      yaw += input.lookX * PLAYER.mouseSensitivityX * dt;
-      pitch -= input.lookY * PLAYER.mouseSensitivityY * dt;
+      yaw -= input.lookX * PLAYER.mouseSensitivityX * dt;
+      pitch += input.lookY * PLAYER.mouseSensitivityY * dt;
       pitch = THREE.MathUtils.clamp(pitch, PLAYER.minPitch, PLAYER.maxPitch);
       return;
     }
 
-    if (isMoving) {
-      // Bake first so current view is preserved, then auto-yaw from that angle
+    if (isTurning && status.facingYawDeg != null) {
+      // Rate-limited follow only (never snap — snap + camera-relative move = spin feedback)
       bakeSoftLook();
-      if (status.facingYawDeg != null) {
-        const maxStep = PLAYER.autoYawSpeed * dt;
-        let delta = status.facingYawDeg - yaw;
-        while (delta > 180) delta -= 360;
-        while (delta < -180) delta += 360;
-        yaw += Math.abs(delta) <= maxStep ? delta : Math.sign(delta) * maxStep;
-      }
-    } else {
-      applySoftLook(dt, input.pointerNX ?? 0, input.pointerNY ?? 0, true);
+      let delta = status.facingYawDeg - yaw;
+      while (delta > 180) delta -= 360;
+      while (delta < -180) delta += 360;
+      const maxStep = PLAYER.autoYawSpeed * dt;
+      yaw += Math.abs(delta) <= maxStep ? delta : Math.sign(delta) * maxStep;
+      return;
     }
+
+    if (isMoving) {
+      // Turn ended: freeze camera yaw — no catch-up / realign
+      bakeSoftLook();
+      return;
+    }
+
+    applySoftLook(dt, input.pointerNX ?? 0, input.pointerNY ?? 0, true);
   }
 
   function follow(dt) {
