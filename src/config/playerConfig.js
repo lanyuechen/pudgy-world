@@ -85,8 +85,9 @@ export const PLAYER = {
     maxParticles: 64,
     emitRate: 52,
     lifetime: 0.55,
-    color: 0xd8dde3,
+    color: 0xf3f6f8,
     bellyOffsetY: 0.12,
+    texture: assetUrl('/assets/textures/snow-particle.png'),
   },
 
   // Spawn (plaza-ish; refined by ground ray)

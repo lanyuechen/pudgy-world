@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { PLAYER } from '../config/playerConfig.js';
 
 /**
- * Belly-slide streak particles (inspired by Houdini slide-fx; Unity has no runtime VFX).
+ * Belly-slide streak particles using a sprite texture instead of a procedural disc.
  * Particles live in world space (parented to scene) so trails stay behind the player.
  */
-export function createSlideFx(scene, playerRoot) {
+export function createSlideFx(scene, playerRoot, texture = null) {
   const cfg = PLAYER.slideFx ?? {};
   const max = cfg.maxParticles ?? 128;
   const emitRate = cfg.emitRate ?? 52;
@@ -41,6 +41,8 @@ export function createSlideFx(scene, playerRoot) {
     blending: THREE.NormalBlending,
     uniforms: {
       uColor: { value: color },
+      uMap: { value: texture },
+      uHasMap: { value: texture ? 1 : 0 },
     },
     vertexShader: /* glsl */ `
       attribute float size;
@@ -49,24 +51,38 @@ export function createSlideFx(scene, playerRoot) {
       void main() {
         vAlpha = alpha;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = size * (380.0 / max(-mv.z, 0.35));
+        gl_PointSize = size * (190.0 / max(-mv.z, 0.35));
         gl_Position = projectionMatrix * mv;
       }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor;
+      uniform sampler2D uMap;
+      uniform float uHasMap;
       varying float vAlpha;
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv);
         float core = smoothstep(0.32, 0.0, d);
         float halo = smoothstep(0.5, 0.12, d);
-        float a = max(core, halo * 0.65) * vAlpha;
-        vec3 col = mix(uColor, vec3(1.0), core * 0.45);
+        vec4 tex = texture2D(uMap, gl_PointCoord);
+        float texMask = max(tex.a, max(tex.r, max(tex.g, tex.b)));
+        float procedural = max(core, halo * 0.65);
+        float mask = mix(procedural, texMask, uHasMap);
+        float a = mask * vAlpha;
+        vec3 col = mix(uColor, vec3(1.0), core * 0.25);
+        if (a <= 0.01) discard;
         gl_FragColor = vec4(col, a);
       }
     `,
   });
+
+  if (texture) {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.needsUpdate = true;
+  }
 
   const points = new THREE.Points(geometry, material);
   points.name = 'SlideFx';
@@ -158,6 +174,7 @@ export function createSlideFx(scene, playerRoot) {
     points.removeFromParent();
     geometry.dispose();
     material.dispose();
+    texture?.dispose?.();
   }
 
   return { points, update, dispose };

@@ -64,7 +64,11 @@ export async function createPlayerSystem({
   }
 
   const animator = createPlayerAnimator(fbx, animations);
-  const traitEquipper = await createTraitEquipper(fbx, loadingManager);
+  const textureLoader = new THREE.TextureLoader(loadingManager);
+  const [traitEquipper, slideFxTexture] = await Promise.all([
+    createTraitEquipper(fbx, loadingManager),
+    PLAYER.slideFx?.texture ? textureLoader.loadAsync(PLAYER.slideFx.texture) : Promise.resolve(null),
+  ]);
 
   // Apply locally saved cosmetic loadout.
   // Order matters due to conflict rules: Head/Body should win over FullBody.
@@ -85,7 +89,7 @@ export async function createPlayerSystem({
     await applyIf(TRAIT_TYPE.Body);
   }
 
-  const slideFx = createSlideFx(scene, playerRoot);
+  const slideFx = createSlideFx(scene, playerRoot, slideFxTexture);
   const playerCamera = createPlayerCamera(camera);
   playerCamera.bind(playerRoot);
   const handBone = findHandBone(playerRoot);
