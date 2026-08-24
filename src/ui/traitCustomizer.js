@@ -3,6 +3,7 @@ import {
   TRAIT_TYPE_LABELS,
   traitsForType,
 } from '../config/traitsConfig.js';
+import { saveCosmeticTraitLoadoutSnapshot } from '../config/traitPersistence.js';
 
 /**
  * Settings-panel trait picker (Skin / Head / Face / Body / Full Body).
@@ -13,6 +14,7 @@ export function createTraitCustomizer(traitEquipper, containerEl) {
   }
 
   const selects = new Map();
+  let isInitializing = true;
 
   const title = document.createElement('p');
   title.className = 'config-subtitle';
@@ -58,6 +60,9 @@ export function createTraitCustomizer(traitEquipper, containerEl) {
       } finally {
         select.disabled = false;
         syncFromEquipper();
+        if (!isInitializing) {
+          saveCosmeticTraitLoadoutSnapshot(traitEquipper);
+        }
       }
     });
 
@@ -74,6 +79,7 @@ export function createTraitCustomizer(traitEquipper, containerEl) {
   }
 
   syncFromEquipper();
+  isInitializing = false;
 
   function dispose() {
     for (const select of selects.values()) {

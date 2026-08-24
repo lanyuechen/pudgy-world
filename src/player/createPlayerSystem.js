@@ -11,6 +11,8 @@ import { createFishingSession } from '../fishing/fishingSession.js';
 import { createFishingPrompt } from '../ui/fishingPrompt.js';
 import { createTraitEquipper } from './traitEquipper.js';
 import { createSlideFx } from './slideFx.js';
+import { loadSavedCosmeticTraitLoadout } from '../config/traitPersistence.js';
+import { TRAIT_TYPE } from '../config/traitsConfig.js';
 
 function collectColliders(root) {
   const meshes = [];
@@ -63,6 +65,26 @@ export async function createPlayerSystem({
 
   const animator = createPlayerAnimator(fbx, animations);
   const traitEquipper = await createTraitEquipper(fbx, loadingManager);
+
+  // Apply locally saved cosmetic loadout.
+  // Order matters due to conflict rules: Head/Body should win over FullBody.
+  const saved = loadSavedCosmeticTraitLoadout();
+  if (saved) {
+    // Skin/Face don't conflict, apply them first.
+    const applyIf = async (type) => {
+      const id = saved[type];
+      if (!id) return;
+      await traitEquipper.equipTrait(id);
+    };
+
+    // Head/Body priority: equip FullBody first, then Head/Body.
+    await applyIf(TRAIT_TYPE.Skin);
+    await applyIf(TRAIT_TYPE.Face);
+    await applyIf(TRAIT_TYPE.FullBody);
+    await applyIf(TRAIT_TYPE.Head);
+    await applyIf(TRAIT_TYPE.Body);
+  }
+
   const slideFx = createSlideFx(scene, playerRoot);
   const playerCamera = createPlayerCamera(camera);
   playerCamera.bind(playerRoot);
