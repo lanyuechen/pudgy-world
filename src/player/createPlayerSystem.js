@@ -11,8 +11,11 @@ import { createFishingSession } from '../fishing/fishingSession.js';
 import { createFishingPrompt } from '../ui/fishingPrompt.js';
 import { createTraitEquipper } from './traitEquipper.js';
 import { createSlideFx } from './slideFx.js';
+import { createCatchPresenter } from '../fishing/catchPresenter.js';
 import { loadSavedCosmeticTraitLoadout } from '../config/traitPersistence.js';
 import { TRAIT_TYPE } from '../config/traitsConfig.js';
+import { FISHING } from '../config/fishingConfig.js';
+import { CATCH_HOLD_DURATION } from '../config/fishConfig.js';
 
 function collectColliders(root) {
   const meshes = [];
@@ -117,15 +120,15 @@ export async function createPlayerSystem({
     onHit: () => hitCounter.onHit(),
   });
 
+  const catchPresenter = createCatchPresenter({ playerRoot, loadingManager });
+  let catchDismissTimer = 0;
+  /** True from cast start until fishing fully ends (includes catch present). */
+  let fishingBusy = false;
+
   const fishingSession = createFishingSession({
     onStepAnim: (clipName) => animator.setFishingClip(clipName),
     onComplete: () => {
-      if (animator.actions.holdingFish) {
-        animator.playOverride('holdingFish', 0.8);
-        setTimeout(() => endFishing(), 800);
-      } else {
-        endFishing();
-      }
+      void presentCatchAndFinish();
     },
     onExit: () => endFishing(),
   });
@@ -133,24 +136,40 @@ export async function createPlayerSystem({
   const input = createPlayerInput(canvas);
   let throwCooldown = 0;
 
-  function endFishing() {
+  async function presentCatchAndFinish() {
     traitEquipper.unequipFishingSet();
-    if (!fishingSession.active) {
-      animator.exitFishing();
-      fishingPrompt.hide();
-      return;
+    const duration = CATCH_HOLD_DURATION ?? FISHING.catchPoseHold ?? 2.4;
+    // Pose first so FishingRod socket is in HoldingFish before the fish attaches.
+    animator.beginCatchPresentation(duration);
+    try {
+      const result = await catchPresenter.presentCatch();
+      if (result?.fish) fishingPrompt.showCatch(result.fish);
+      window.clearTimeout(catchDismissTimer);
+      catchDismissTimer = window.setTimeout(() => endFishing(), duration * 1000);
+    } catch (err) {
+      console.error('[fishing] catch present failed', err);
+      endFishing();
     }
-    fishingSession.exit();
+  }
+
+  function endFishing() {
+    window.clearTimeout(catchDismissTimer);
+    catchDismissTimer = 0;
+    fishingBusy = false;
+    catchPresenter.dismiss();
+    traitEquipper.unequipFishingSet();
+    if (fishingSession.active) fishingSession.exit();
     animator.exitFishing();
     fishingPrompt.hide();
   }
 
   function beginFishing(hole) {
+    fishingBusy = true;
     traitEquipper.equipFishingSet();
     animator.enterFishing();
     fishingSession.start(hole.id);
     fishingPrompt.showFishing(fishingSession.step);
-    console.info('[fishing] started at', hole.id, fishingSession.step);
+    console.info('[fishing] started', hole.id, fishingSession.step);
   }
 
   function getHandWorldPosition(out) {
@@ -179,7 +198,7 @@ export async function createPlayerSystem({
   }
 
   function tryInteract(frame) {
-    if (!fishingHoles || fishingSession.active) return;
+    if (!fishingHoles || fishingBusy || fishingSession.active) return;
 
     const ray = buildInteractRay(frame.interactClick);
     if (!ray) return;
@@ -192,23 +211,25 @@ export async function createPlayerSystem({
   function update(dt) {
     const frame = input.consume();
 
-    if (!fishingSession.active && frame.interactClick) {
+    if (!fishingBusy && !fishingSession.active && frame.interactClick) {
       tryInteract(frame);
     }
 
-    if (fishingSession.active) {
+    if (fishingBusy || fishingSession.active || animator.isFishing) {
       if (frame.returnPressed) {
         endFishing();
-      } else if (frame.interactClick) {
+      } else if (fishingSession.active && frame.interactClick) {
         fishingSession.registerStruggleClick();
       }
 
-      fishingSession.update(dt);
-      fishingPrompt.showFishing(
-        fishingSession.step,
-        fishingSession.struggleClicks,
-        fishingSession.struggleTarget,
-      );
+      if (fishingSession.active) {
+        fishingSession.update(dt);
+        fishingPrompt.showFishing(
+          fishingSession.step,
+          fishingSession.struggleClicks,
+          fishingSession.struggleTarget,
+        );
+      }
 
       playerCamera.applyLook(dt, frame, {});
       animator.update(dt, { fishingMode: true });
@@ -250,9 +271,11 @@ export async function createPlayerSystem({
   }
 
   function dispose() {
+    window.clearTimeout(catchDismissTimer);
     input.dispose();
     snowballs.dispose();
     slideFx.dispose();
+    catchPresenter.dispose();
     traitEquipper.dispose();
     hitCounter.setVisible(false);
     fishingPrompt.hide();

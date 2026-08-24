@@ -14,13 +14,25 @@ export const FISHING = {
   /** Visual disc diameter (Unity local scale 3 on default cylinder → ~3m) */
   discDiameter: 3,
 
-  /** TestFishingHole stepDefinitions (types 0=Idle,1=Hold,2=Struggle) */
+  /** Step → player clip */
+  stepClips: {
+    idle: 'fishingIdle',
+    cast: 'fishingCast',
+    hold: 'fishingHoldingRodIdle',
+    struggle: 'fishingStruggling',
+  },
+  /**
+   * FishingCast / HoldingFish in player_pudgy.fbx are ~1-frame poses.
+   * Hold those poses this long so 抛竿 / 举鱼 read clearly.
+   */
+  castPoseHold: 0.55,
+  catchPoseHold: 2.4,
+
+  /** Play order: cast → idle → struggle → (then HoldingFish on complete). */
   defaultStepDefinitions: [
+    { type: 'cast', durationMin: 0.55, durationMax: 0.55 },
     { type: 'idle', durationMin: 5, durationMax: 7.5 },
-    { type: 'hold', durationMin: 5, durationMax: 10 },
     { type: 'struggle', clicksMin: 10, clicksMax: 20 },
-    { type: 'hold', durationMin: 5, durationMax: 10 },
-    { type: 'struggle', clicksMin: 15, clicksMax: 30 },
   ],
 
   /** Plaza fishing spots (ice holes on/near water plane y ≈ -6.8) */
@@ -33,6 +45,7 @@ export const FISHING = {
 
 export const FISHING_STEP = {
   Idle: 'idle',
+  Cast: 'cast',
   Hold: 'hold',
   Struggle: 'struggle',
 };
@@ -62,16 +75,7 @@ export function generateFishingSequence(definitions = FISHING.defaultStepDefinit
   });
 }
 
-/** Clip per FishingStepType (inferred from clip names + step semantics). */
+/** Clip per fishing step — HoldingFish plays after the sequence completes. */
 export function fishingClipForStep(type) {
-  switch (type) {
-    case FISHING_STEP.Idle:
-      return 'fishingIdle';
-    case FISHING_STEP.Hold:
-      return 'fishingHoldingRodIdle';
-    case FISHING_STEP.Struggle:
-      return 'fishingStruggling';
-    default:
-      return 'fishingIdle';
-  }
+  return FISHING.stepClips?.[type] ?? 'fishingIdle';
 }

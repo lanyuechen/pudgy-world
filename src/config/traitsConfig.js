@@ -29,7 +29,13 @@ export const TRAIT_CATALOG = [
   // Fishing (FishingMovementState defaults)
   { id: 'rod_wooden_default', type: TRAIT_TYPE.Rod, label: 'Wooden Rod', fbx: assetUrl('/assets/models/player/fishing/Rod_Wooden_Default.fbx') },
   { id: 'rope_white_default', type: TRAIT_TYPE.Rope, label: 'White Rope', fbx: assetUrl('/assets/models/player/fishing/Rope_White_Default.fbx') },
-  { id: 'bait_hook_default', type: TRAIT_TYPE.Bait, label: 'Hook Bait', fbx: assetUrl('/assets/models/player/fishing/Bait_Hook_Default.fbx') },
+  { id: 'bait_hook_default', type: TRAIT_TYPE.Bait, label: 'Hook', fbx: assetUrl('/assets/models/player/fishing/Bait_Hook_Default.fbx') },
+  { id: 'bait_worm', type: TRAIT_TYPE.Bait, label: 'Worm', fbx: assetUrl('/assets/models/player/fishing/Bait_Worm.fbx') },
+  { id: 'bait_goldworm', type: TRAIT_TYPE.Bait, label: 'Gold Worm', fbx: assetUrl('/assets/models/player/fishing/Bait_GoldWorm.fbx') },
+  { id: 'bait_spam', type: TRAIT_TYPE.Bait, label: 'Spam', fbx: assetUrl('/assets/models/player/fishing/Bait_Spam.fbx') },
+  { id: 'bait_squid', type: TRAIT_TYPE.Bait, label: 'Squid', fbx: assetUrl('/assets/models/player/fishing/Bait_Squid.fbx') },
+  { id: 'bait_anchovie', type: TRAIT_TYPE.Bait, label: 'Anchovie', fbx: assetUrl('/assets/models/player/fishing/Bait_Anchovie.fbx') },
+  { id: 'bait_jerky', type: TRAIT_TYPE.Bait, label: 'Jerky', fbx: assetUrl('/assets/models/player/fishing/Bait_Jerky.fbx') },
 ];
 
 export const TRAIT_BY_ID = new Map(TRAIT_CATALOG.map((t) => [t.id, t]));
@@ -68,4 +74,5 @@ export const TRAIT_TYPE_LABELS = {
   [TRAIT_TYPE.Face]: 'Face',
   [TRAIT_TYPE.Body]: 'Body',
   [TRAIT_TYPE.FullBody]: 'Full Body',
+  [TRAIT_TYPE.Bait]: 'Bait',
 };

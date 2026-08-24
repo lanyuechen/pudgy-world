@@ -124,10 +124,11 @@ export function createPlayerAnimator(modelRoot, animations = []) {
   let afkIndex = 0;
   let afkStepUntil = 0;
   let fishingMode = false;
+  /** @type {'none' | 'steps' | 'catch'} */
+  let fishingPhase = 'none';
   /** @type {string | null} */
   let fishingClip = null;
-  /** @type {string | null} */
-  let pendingFishingClip = null;
+  let poseHoldUntil = 0;
 
   const availableAfk = AFK_SEQUENCE.filter((name) => actions[name]);
 
@@ -214,56 +215,76 @@ export function createPlayerAnimator(modelRoot, animations = []) {
 
   function applyFishingClip(name, fade = 0.15) {
     if (!actions[name]) return false;
-    if (fishingClip === name && actions[name].isRunning()) return true;
+    if (fishingClip === name && current === actions[name]) {
+      const loop = CLIP_DEFS[name]?.loop;
+      if (loop === THREE.LoopRepeat && !actions[name].isRunning()) {
+        play(name, fade);
+      }
+      return true;
+    }
     fishingClip = name;
-    pendingFishingClip = null;
     stopNonFishingActions();
     return play(name, fade);
   }
 
+  /**
+   * Enter fishing mode; session drives clip order (cast → idle → struggle).
+   */
   function enterFishing() {
     fishingMode = true;
+    fishingPhase = 'steps';
     afkActive = false;
     idleTimer = 0;
     overrideActive = false;
     jumpLockedUntil = 0;
     fishingClip = null;
-    pendingFishingClip = null;
-    if (actions.fishingCast) {
-      fishingClip = 'fishingCast';
-      stopNonFishingActions();
-      play('fishingCast', 0.12);
-    } else {
-      applyFishingClip('fishingIdle', 0.2);
-    }
+    poseHoldUntil = 0;
   }
 
   function exitFishing() {
     fishingMode = false;
+    fishingPhase = 'none';
     fishingClip = null;
-    pendingFishingClip = null;
+    poseHoldUntil = 0;
+    overrideActive = false;
     restoreLocomotion(0.2);
   }
 
   function setFishingClip(name) {
     if (!fishingMode || !actions[name]) return;
-    if (fishingClip === 'fishingCast' && actions.fishingCast?.isRunning()) {
-      pendingFishingClip = name;
-      return;
-    }
+    if (fishingPhase === 'catch') return;
     applyFishingClip(name, 0.15);
   }
 
-  function updateFishing(dt) {
-    if (
-      fishingClip === 'fishingCast' &&
-      actions.fishingCast &&
-      !actions.fishingCast.isRunning()
-    ) {
-      applyFishingClip(pendingFishingClip ?? 'fishingIdle', 0.12);
-    } else if (fishingClip && actions[fishingClip] && !actions[fishingClip].isRunning()) {
-      play(fishingClip, 0.08);
+  /**
+   * 举鱼 — HoldingFish is also a 1-frame pose; clamp and hold for duration.
+   * @param {number} [duration]
+   */
+  function beginCatchPresentation(duration = PLAYER.fishingCatchHold ?? 2.4) {
+    fishingMode = true;
+    fishingPhase = 'catch';
+    overrideActive = false;
+    fishingClip = 'holdingFish';
+    stopNonFishingActions();
+    if (actions.holdingFish) {
+      play('holdingFish', 0.12);
+      poseHoldUntil = performance.now() / 1000 + Math.max(duration, clipDuration(actions.holdingFish));
+    } else {
+      poseHoldUntil = performance.now() / 1000 + duration;
     }
+  }
+
+  function updateFishing(dt) {
+    if (fishingPhase === 'catch') {
+      // Keep HoldingFish clamped; do not restart other fishing clips.
+    } else if (fishingClip && actions[fishingClip]) {
+      const action = actions[fishingClip];
+      const loop = CLIP_DEFS[fishingClip]?.loop;
+      if (loop === THREE.LoopRepeat && !action.isRunning()) {
+        play(fishingClip, 0.08);
+      }
+    }
+
     mixer.update(dt);
   }
 
@@ -329,5 +350,22 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     mixer.update(dt);
   }
 
-  return { mixer, actions, update, play, playOverride, restoreLocomotion, enterFishing, exitFishing, setFishingClip };
+  return {
+    mixer,
+    actions,
+    update,
+    play,
+    playOverride,
+    restoreLocomotion,
+    enterFishing,
+    exitFishing,
+    setFishingClip,
+    beginCatchPresentation,
+    get fishingPhase() {
+      return fishingPhase;
+    },
+    get isFishing() {
+      return fishingMode;
+    },
+  };
 }

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sync:traits": "node scripts/syncTraitsFromUnity.mjs"
+    "sync:traits": "node scripts/syncTraitsFromUnity.mjs",
+    "sync:fish": "node scripts/syncFishFromUnity.mjs"
   },
   "dependencies": {
     "three": "^0.170.0"

@@ -80,6 +80,10 @@ export const PLAYER = {
   afkIdleDelay: 10,
   afkClips: ['afk1', 'afk2', 'afk3'],
 
+  /** FishingCast / HoldingFish are 1-frame poses in player_pudgy.fbx */
+  fishingCastHold: 0.55,
+  fishingCatchHold: 2.4,
+
   /** Belly-slide streak particles (Houdini slide-fx inspired) */
   slideFx: {
     maxParticles: 64,
