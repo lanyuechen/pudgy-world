@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { createProceduralSky } from './sky.js';
 import { createLights } from './lights.js';
+import { assetUrl } from '../config/assetUrl.js';
 import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
 
 function cameraViewFromObject(object) {
@@ -40,7 +41,7 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
 
   const materials = await createAtlasMaterials(loadingManager);
   const fbxLoader = new FBXLoader(loadingManager);
-  const root = await fbxLoader.loadAsync(placement.url);
+  const root = await fbxLoader.loadAsync(assetUrl(placement.url));
   root.name = placement.name;
   prepareFbxRoot(root, { ...materials, castShadow: true });
 

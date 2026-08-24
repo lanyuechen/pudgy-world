@@ -2,6 +2,8 @@
  * Scene constants mirrored from Assets/Scenes/Pengu_Plaza.unity
  * and related materials (Skybox_Test, Blue, PlayerCamera).
  */
+import { assetUrl } from './assetUrl.js';
+
 export const SCENE = {
   ambientIntensity: 0.28,
   ambientSky: 0x55aeff,
@@ -59,9 +61,9 @@ export const SCENE = {
   },
 
   assets: {
-    plazaFbx: '/assets/models/asset-list/Individual_PenguPlaza_02.fbx',
-    bergAtlas: '/assets/textures/TheBerg_ColorAtlas.png',
-    billboardAtlas: '/assets/textures/BillboardTexture_02.png',
-    snowParticle: '/assets/textures/snow-particle.png',
+    plazaFbx: assetUrl('/assets/models/asset-list/Individual_PenguPlaza_02.fbx'),
+    bergAtlas: assetUrl('/assets/textures/TheBerg_ColorAtlas.png'),
+    billboardAtlas: assetUrl('/assets/textures/BillboardTexture_02.png'),
+    snowParticle: assetUrl('/assets/textures/snow-particle.png'),
   },
 };

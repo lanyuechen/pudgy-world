@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import assetListData from '../config/assetListPlacements.json';
+import { assetUrl } from '../config/assetUrl.js';
 import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
 
 async function mapPool(items, concurrency, worker) {
@@ -38,7 +39,7 @@ export async function loadAssetListTowns(loadingManager, onProgress) {
     );
 
     try {
-      const root = await fbxLoader.loadAsync(placement.url);
+      const root = await fbxLoader.loadAsync(assetUrl(placement.url));
       root.name = placement.name;
       // File scale is normalized to meters inside prepareFbxRoot; Unity instance scale stays on wrapper.
       prepareFbxRoot(root, { ...materials, castShadow: false });

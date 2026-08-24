@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite';
 import path from 'node:path';
 
-export default defineConfig({
+// GitHub Pages project site: https://<user>.github.io/pudgy-world/
+const repoBase = '/pudgy-world/';
+
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? repoBase : '/',
   root: '.',
   publicDir: 'public',
   resolve: {
@@ -17,4 +21,4 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
-});
+}));

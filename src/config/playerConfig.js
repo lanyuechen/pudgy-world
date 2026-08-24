@@ -1,9 +1,11 @@
 /**
  * Constants from Player.prefab / UnrestrictedMovementState / PlayerCamera.prefab
  */
+import { assetUrl } from './assetUrl.js';
+
 export const PLAYER = {
-  fbx: '/assets/models/player/player_pudgy.fbx',
-  traitsAtlas: '/assets/textures/Traits_ColorAtlas.png',
+  fbx: assetUrl('/assets/models/player/player_pudgy.fbx'),
+  traitsAtlas: assetUrl('/assets/textures/Traits_ColorAtlas.png'),
 
   // CapsuleCollider
   radius: 0.4,
