@@ -74,6 +74,12 @@ export const PLAYER = {
   /** Bone for spawn (Player._handTransform on armature) */
   snowballHandBones: ['R_Arm_02_end', 'R_Arm_02'],
 
+  /** Unity PlayerAnimator.controller locomotion states @ 1.75 */
+  locomotionAnimSpeed: 1.75,
+  /** AFK clips exist in FBX but not in Unity controller — play after standing still */
+  afkIdleDelay: 10,
+  afkClips: ['afk1', 'afk2', 'afk3'],
+
   // Spawn (plaza-ish; refined by ground ray)
   spawn: { x: -20, y: 20, z: -22 },
 };
