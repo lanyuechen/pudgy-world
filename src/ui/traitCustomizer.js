@@ -25,7 +25,8 @@ export function createTraitCustomizer(traitEquipper, containerEl) {
 
     const label = document.createElement('span');
     label.className = 'label';
-    label.textContent = TRAIT_TYPE_LABELS[type] ?? type;
+    const options = traitsForType(type);
+    label.textContent = `${TRAIT_TYPE_LABELS[type] ?? type} (${options.length})`;
 
     const select = document.createElement('select');
     select.dataset.traitType = type;
@@ -36,7 +37,7 @@ export function createTraitCustomizer(traitEquipper, containerEl) {
     none.textContent = 'Default';
     select.appendChild(none);
 
-    for (const trait of traitsForType(type)) {
+    for (const trait of options) {
       const opt = document.createElement('option');
       opt.value = trait.id;
       opt.textContent = trait.label;

@@ -2,6 +2,7 @@
  * PlayerTrait / TraitEquipper — cosmetic + fishing trait catalog.
  */
 import { assetUrl } from './assetUrl.js';
+import { GENERATED_TRAIT_CATALOG } from './traitsCatalog.generated.js';
 
 export const TRAIT_TYPE = {
   Skin: 'skin',
@@ -18,26 +19,7 @@ export const TRAIT_TYPE = {
 
 /** @type {TraitDefinition[]} */
 export const TRAIT_CATALOG = [
-  // Skin
-  { id: 'skin_pudgyblue_default', type: TRAIT_TYPE.Skin, label: 'Pudgy Blue', fbx: assetUrl('/assets/models/player/traits/skin_pudgyblue_default.fbx') },
-  { id: 'skin_pollypink_default', type: TRAIT_TYPE.Skin, label: 'Polly Pink', fbx: assetUrl('/assets/models/player/traits/skin_pollypink_default.fbx') },
-  { id: 'skin_blackandwhite_default', type: TRAIT_TYPE.Skin, label: 'Black & White', fbx: assetUrl('/assets/models/player/traits/skin_blackandwhite_default.fbx') },
-
-  // Head
-  { id: 'head_polarbear_default', type: TRAIT_TYPE.Head, label: 'Polar Bear', fbx: assetUrl('/assets/models/player/traits/head_polarbear_default.fbx') },
-  { id: 'head_cowboyhat_default', type: TRAIT_TYPE.Head, label: 'Cowboy Hat', fbx: assetUrl('/assets/models/player/traits/head_cowboyhat_default.fbx') },
-  { id: 'head_2hat_common', type: TRAIT_TYPE.Head, label: '2 Hat', fbx: assetUrl('/assets/models/player/traits/head_2hat_common.fbx') },
-
-  // Face
-  { id: 'face_normal_default', type: TRAIT_TYPE.Face, label: 'Normal Face', fbx: assetUrl('/assets/models/player/traits/face_normal_default.fbx') },
-  { id: 'face_cute_default', type: TRAIT_TYPE.Face, label: 'Cute Face', fbx: assetUrl('/assets/models/player/traits/face_cute_default.fbx') },
-  { id: 'face_circleglasses_common', type: TRAIT_TYPE.Face, label: 'Circle Glasses', fbx: assetUrl('/assets/models/player/traits/face_circleglasses_common.fbx') },
-
-  // Body
-  { id: 'body_bikerjacket_default', type: TRAIT_TYPE.Body, label: 'Biker Jacket', fbx: assetUrl('/assets/models/player/traits/body_bikerjacket_default.fbx') },
-  { id: 'body_vote4pudgy_default', type: TRAIT_TYPE.Body, label: 'Vote 4 Pudgy', fbx: assetUrl('/assets/models/player/traits/body_vote4pudgy_default.fbx') },
-  { id: 'body_basketballjersey_common', type: TRAIT_TYPE.Body, label: 'Basketball Jersey', fbx: assetUrl('/assets/models/player/traits/body_basketballjersey_common.fbx') },
-
+  ...GENERATED_TRAIT_CATALOG,
   // Fishing (FishingMovementState defaults)
   { id: 'rod_wooden_default', type: TRAIT_TYPE.Rod, label: 'Wooden Rod', fbx: assetUrl('/assets/models/player/fishing/Rod_Wooden_Default.fbx') },
   { id: 'rope_white_default', type: TRAIT_TYPE.Rope, label: 'White Rope', fbx: assetUrl('/assets/models/player/fishing/Rope_White_Default.fbx') },
