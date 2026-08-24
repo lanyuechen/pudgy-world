@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { FISHING } from '../config/fishingConfig.js';
 
 const _playerPos = new THREE.Vector3();
+const _origin = new THREE.Vector3();
+const _down = new THREE.Vector3(0, -1, 0);
 
 /**
  * FishingHole.cs + LocalPlayerTrigger range highlight.
@@ -108,11 +110,46 @@ export function createFishingHoles(scene, { holes = FISHING.holes } = {}) {
     return playerInRange;
   }
 
+  /**
+   * Re-align hole Y after player ground snap (same colliders + reference height).
+   */
+  function alignToColliders(meshes, referenceGroundY) {
+    const ray = new THREE.Raycaster();
+    const fromY = referenceGroundY + 100;
+
+    for (const entry of entries) {
+      const x = entry.root.position.x;
+      const z = entry.root.position.z;
+      _origin.set(x, fromY, z);
+      ray.set(_origin, _down);
+      ray.far = 300;
+      const hits = ray.intersectObjects(meshes, false);
+
+      let y = referenceGroundY;
+      let best = null;
+      let bestScore = Infinity;
+      for (const hit of hits) {
+        const dy = Math.abs(hit.point.y - referenceGroundY);
+        if (dy > 40) continue;
+        if (dy < bestScore) {
+          bestScore = dy;
+          best = hit.point.y;
+        }
+      }
+      if (best != null) y = best + 0.05;
+
+      entry.root.position.y = y;
+      entry.position.set(x, y, z);
+    }
+
+    return entries;
+  }
+
   function dispose() {
     scene.remove(group);
     discGeo.dispose();
     for (const e of entries) e.material.dispose();
   }
 
-  return { group, entries, updateRange, raycastInteract, getHoleInRange, dispose };
+  return { group, entries, updateRange, raycastInteract, getHoleInRange, alignToColliders, dispose };
 }

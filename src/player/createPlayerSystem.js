@@ -9,6 +9,8 @@ import { createPlayerInput } from '../input/playerInput.js';
 import { createSnowballHitCounter } from '../ui/snowballHitCounter.js';
 import { createFishingSession } from '../fishing/fishingSession.js';
 import { createFishingPrompt } from '../ui/fishingPrompt.js';
+import { createTraitEquipper } from './traitEquipper.js';
+import { createSlideFx } from './slideFx.js';
 
 function collectColliders(root) {
   const meshes = [];
@@ -54,7 +56,14 @@ export async function createPlayerSystem({
     playerRoot.position.y = 1;
   }
 
+  if (fishingHoles) {
+    const groundY = playerRoot.position.y - PLAYER.skinWidth;
+    fishingHoles.alignToColliders(colliders, groundY);
+  }
+
   const animator = createPlayerAnimator(fbx, animations);
+  const traitEquipper = await createTraitEquipper(fbx, loadingManager);
+  const slideFx = createSlideFx(scene, playerRoot);
   const playerCamera = createPlayerCamera(camera);
   playerCamera.bind(playerRoot);
   const handBone = findHandBone(playerRoot);
@@ -99,6 +108,7 @@ export async function createPlayerSystem({
   let throwCooldown = 0;
 
   function endFishing() {
+    traitEquipper.unequipFishingSet();
     if (!fishingSession.active) {
       animator.exitFishing();
       fishingPrompt.hide();
@@ -110,8 +120,9 @@ export async function createPlayerSystem({
   }
 
   function beginFishing(hole) {
-    fishingSession.start(hole.id);
+    traitEquipper.equipFishingSet();
     animator.enterFishing();
+    fishingSession.start(hole.id);
     fishingPrompt.showFishing(fishingSession.step);
     console.info('[fishing] started at', hole.id, fishingSession.step);
   }
@@ -155,6 +166,10 @@ export async function createPlayerSystem({
   function update(dt) {
     const frame = input.consume();
 
+    if (!fishingSession.active && frame.interactClick) {
+      tryInteract(frame);
+    }
+
     if (fishingSession.active) {
       if (frame.returnPressed) {
         endFishing();
@@ -179,8 +194,6 @@ export async function createPlayerSystem({
       // unrestricted — no-op
     }
 
-    if (frame.interactClick) tryInteract(frame);
-
     let throwStarted = false;
     if (frame.throwSnowball && throwCooldown <= 0) {
       throwCooldown = PLAYER.throwCooldown;
@@ -199,6 +212,7 @@ export async function createPlayerSystem({
 
     playerCamera.applyLook(dt, frame, status);
     animator.update(dt, status);
+    slideFx.update(dt, status);
     snowballs.update(dt);
     playerCamera.follow(dt);
 
@@ -212,6 +226,8 @@ export async function createPlayerSystem({
   function dispose() {
     input.dispose();
     snowballs.dispose();
+    slideFx.dispose();
+    traitEquipper.dispose();
     hitCounter.setVisible(false);
     fishingPrompt.hide();
     scene.remove(playerRoot);
@@ -224,6 +240,7 @@ export async function createPlayerSystem({
     animator,
     hitCounter,
     fishingSession,
+    traitEquipper,
     update,
     dispose,
   };

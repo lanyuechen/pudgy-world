@@ -60,7 +60,7 @@ const CLIP_DEFS = {
   },
   fishingStruggling: {
     aliases: ['Armature|FishingStruggling', 'FishingStruggling'],
-    loop: THREE.LoopOnce,
+    loop: THREE.LoopRepeat,
     speed: 1,
   },
   holdingFish: {
@@ -124,6 +124,10 @@ export function createPlayerAnimator(modelRoot, animations = []) {
   let afkIndex = 0;
   let afkStepUntil = 0;
   let fishingMode = false;
+  /** @type {string | null} */
+  let fishingClip = null;
+  /** @type {string | null} */
+  let pendingFishingClip = null;
 
   const availableAfk = AFK_SEQUENCE.filter((name) => actions[name]);
 
@@ -201,27 +205,71 @@ export function createPlayerAnimator(modelRoot, animations = []) {
     lastLocomotion = 'idle';
   }
 
+  function stopNonFishingActions() {
+    for (const [name, action] of Object.entries(actions)) {
+      if (name === fishingClip) continue;
+      action.stop();
+    }
+  }
+
+  function applyFishingClip(name, fade = 0.15) {
+    if (!actions[name]) return false;
+    if (fishingClip === name && actions[name].isRunning()) return true;
+    fishingClip = name;
+    pendingFishingClip = null;
+    stopNonFishingActions();
+    return play(name, fade);
+  }
+
   function enterFishing() {
     fishingMode = true;
     afkActive = false;
     idleTimer = 0;
     overrideActive = false;
-    if (actions.fishingIdle) play('fishingIdle', 0.2);
+    jumpLockedUntil = 0;
+    fishingClip = null;
+    pendingFishingClip = null;
+    if (actions.fishingCast) {
+      fishingClip = 'fishingCast';
+      stopNonFishingActions();
+      play('fishingCast', 0.12);
+    } else {
+      applyFishingClip('fishingIdle', 0.2);
+    }
   }
 
   function exitFishing() {
     fishingMode = false;
+    fishingClip = null;
+    pendingFishingClip = null;
     restoreLocomotion(0.2);
   }
 
   function setFishingClip(name) {
     if (!fishingMode || !actions[name]) return;
-    play(name, 0.15);
+    if (fishingClip === 'fishingCast' && actions.fishingCast?.isRunning()) {
+      pendingFishingClip = name;
+      return;
+    }
+    applyFishingClip(name, 0.15);
+  }
+
+  function updateFishing(dt) {
+    if (
+      fishingClip === 'fishingCast' &&
+      actions.fishingCast &&
+      !actions.fishingCast.isRunning()
+    ) {
+      applyFishingClip(pendingFishingClip ?? 'fishingIdle', 0.12);
+    } else if (fishingClip && actions[fishingClip] && !actions[fishingClip].isRunning()) {
+      play(fishingClip, 0.08);
+    }
+    mixer.update(dt);
   }
 
   function update(dt, { moving, grounded, sliding, jumpStarted, throwStarted, fishingMode: fishing = false }) {
     if (fishing || fishingMode) {
-      mixer.update(dt);
+      updateFishing(dt);
       return;
     }
 

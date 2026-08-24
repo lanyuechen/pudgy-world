@@ -31,6 +31,9 @@ export const SCENE = {
     color: { r: 0.57169807, g: 0.92392004, b: 1, a: 0.88235295 },
     metalness: 0.342,
     roughness: 0.5,
+    waveAmplitude: 0.025,
+    waveSpeed: 0.45,
+    uvScroll: { x: 0.018, y: 0.01 },
   },
 
   // Snow particle emitter
@@ -42,6 +45,8 @@ export const SCENE = {
     startSizeMax: 0.2,
     lifetime: 10,
     count: 2500,
+    noiseStrength: 0.5,
+    emitRate: 250,
   },
 
   // PlayerCamera

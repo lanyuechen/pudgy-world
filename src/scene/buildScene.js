@@ -25,7 +25,7 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
   });
 
   const water = createWater();
-  scene.add(water);
+  scene.add(water.mesh);
 
   const textureLoader = new THREE.TextureLoader(loadingManager);
   let snowTexture = null;
@@ -46,18 +46,15 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     { id: 'hole-b', dx: -3, dz: 4 },
     { id: 'hole-c', dx: 0, dz: -5 },
   ];
-  const ray = new THREE.Raycaster();
-  const down = new THREE.Vector3(0, -1, 0);
-  const holes = holeOffsets.map(({ id, dx, dz }) => {
-    const x = PLAYER.spawn.x + dx;
-    const z = PLAYER.spawn.z + dz;
-    ray.set(new THREE.Vector3(x, 200, z), down);
-    const hit = ray.intersectObject(plaza, true)[0];
-    const y = hit ? hit.point.y + 0.05 : PLAYER.spawn.y;
-    return { id, position: { x, y, z } };
-  });
+  const holes = holeOffsets.map(({ id, dx, dz }) => ({
+    id,
+    position: {
+      x: PLAYER.spawn.x + dx,
+      y: 0,
+      z: PLAYER.spawn.z + dz,
+    },
+  }));
   const fishingHoles = createFishingHoles(scene, { holes });
-  console.info('[fishing] holes', holes.map((h) => [h.id, h.position.x, h.position.y, h.position.z]));
 
   return {
     scene,
@@ -80,6 +77,7 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     },
     update(dt) {
       snow.update(dt);
+      water.update(dt);
     },
   };
 }

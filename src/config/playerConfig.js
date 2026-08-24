@@ -34,7 +34,7 @@ export const PLAYER = {
   // PlayerCamera.prefab (not C# field defaults)
   cameraDistance: 3,
   /** Closest boom — current third-person gameplay distance */
-  cameraDistanceMin: 5,
+  cameraDistanceMin: 3,
   /** Farthest boom — enough to frame the whole plaza */
   cameraDistanceMax: 90,
   /** Multiplier on wheel delta (pixels/lines → meters) */
@@ -79,6 +79,15 @@ export const PLAYER = {
   /** AFK clips exist in FBX but not in Unity controller — play after standing still */
   afkIdleDelay: 10,
   afkClips: ['afk1', 'afk2', 'afk3'],
+
+  /** Belly-slide streak particles (Houdini slide-fx inspired) */
+  slideFx: {
+    maxParticles: 64,
+    emitRate: 52,
+    lifetime: 0.55,
+    color: 0xd8dde3,
+    bellyOffsetY: 0.12,
+  },
 
   // Spawn (plaza-ish; refined by ground ray)
   spawn: { x: -20, y: 20, z: -22 },

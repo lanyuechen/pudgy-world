@@ -8,15 +8,15 @@ import { SCENE } from '../config/sceneConfig.js';
 export function createSnow(texture) {
   const cfg = SCENE.snow;
   const count = cfg.count;
+  const noiseStrength = cfg.noiseStrength ?? 0.5;
 
   const positions = new Float32Array(count * 3);
   const velocities = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
+  const phases = new Float32Array(count);
 
-  // After -90° X, Unity box Y maps roughly to world Z depth; keep a large volume
-  // covering the plaza water/land area.
   const halfX = cfg.boxScale.x * 0.5;
-  const halfY = cfg.boxScale.z * 0.5; // vertical extent after rotation
+  const halfY = cfg.boxScale.z * 0.5;
   const halfZ = cfg.boxScale.y * 0.5;
 
   const origin = new THREE.Vector3(cfg.position.x, cfg.position.y + halfY * 0.5, cfg.position.z);
@@ -27,12 +27,12 @@ export function createSnow(texture) {
     positions[i3 + 1] = origin.y + (Math.random() * 2 - 1) * halfY;
     positions[i3 + 2] = origin.z + (Math.random() * 2 - 1) * halfZ;
 
-    velocities[i3] = (Math.random() - 0.5) * 0.4;
-    velocities[i3 + 1] = -(0.8 + Math.random() * 1.2);
-    velocities[i3 + 2] = (Math.random() - 0.5) * 0.4;
+    velocities[i3] = 0;
+    velocities[i3 + 1] = -(1 + Math.random());
+    velocities[i3 + 2] = 0;
 
-    sizes[i] =
-      cfg.startSizeMin + Math.random() * (cfg.startSizeMax - cfg.startSizeMin);
+    sizes[i] = cfg.startSizeMin + Math.random() * (cfg.startSizeMax - cfg.startSizeMin);
+    phases[i] = Math.random() * Math.PI * 2;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -42,17 +42,17 @@ export function createSnow(texture) {
   const material = new THREE.PointsMaterial({
     map: texture ?? null,
     color: 0xffffff,
-    size: 0.35,
+    size: 0.16,
     sizeAttenuation: true,
     transparent: true,
-    opacity: 0.85,
-    depthWrite: true,
+    opacity: 0.9,
+    depthWrite: false,
     blending: THREE.NormalBlending,
   });
   if (texture) {
     texture.colorSpace = THREE.SRGBColorSpace;
     material.map = texture;
-    material.alphaTest = 0.05;
+    material.alphaTest = 0.5;
   }
 
   const points = new THREE.Points(geometry, material);
@@ -68,19 +68,30 @@ export function createSnow(texture) {
     maxZ: origin.z + halfZ,
   };
 
+  let time = 0;
+
+  function respawn(i) {
+    const i3 = i * 3;
+    const pos = geometry.attributes.position.array;
+    pos[i3] = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+    pos[i3 + 1] = bounds.maxY;
+    pos[i3 + 2] = bounds.minZ + Math.random() * (bounds.maxZ - bounds.minZ);
+    velocities[i3] = 0;
+    velocities[i3 + 1] = -(1 + Math.random());
+    velocities[i3 + 2] = 0;
+  }
+
   function update(dt) {
+    time += dt;
     const pos = geometry.attributes.position.array;
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      pos[i3] += velocities[i3] * dt;
+      const n = Math.sin(time * 1.7 + phases[i]) * noiseStrength;
+      pos[i3] += (velocities[i3] + n * 0.35) * dt;
       pos[i3 + 1] += velocities[i3 + 1] * dt;
-      pos[i3 + 2] += velocities[i3 + 2] * dt;
+      pos[i3 + 2] += (velocities[i3 + 2] + Math.cos(time * 1.3 + phases[i]) * noiseStrength * 0.35) * dt;
 
-      if (pos[i3 + 1] < bounds.minY) {
-        pos[i3] = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
-        pos[i3 + 1] = bounds.maxY;
-        pos[i3 + 2] = bounds.minZ + Math.random() * (bounds.maxZ - bounds.minZ);
-      }
+      if (pos[i3 + 1] < bounds.minY) respawn(i);
     }
     geometry.attributes.position.needsUpdate = true;
   }

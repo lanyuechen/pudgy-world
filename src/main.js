@@ -8,6 +8,7 @@ import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
 import { remapFbxTextureUrl } from './config/assetUrl.js';
 import { createOutlineComposer } from './rendering/outlineComposer.js';
 import { syncToonLightDirection } from './rendering/toonMaterial.js';
+import { createTraitCustomizer } from './ui/traitCustomizer.js';
 
 const sceneOptions = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
@@ -21,6 +22,7 @@ const hintEl = document.getElementById('hint');
 const configRoot = document.getElementById('config');
 const configToggle = document.getElementById('config-toggle');
 const configPanel = document.getElementById('config-panel');
+const traitsPanel = document.getElementById('traits-panel');
 
 for (const opt of sceneOptions) {
   const el = document.createElement('option');
@@ -95,6 +97,7 @@ let outlineComposer = null;
 const cache = new Map();
 let world = null;
 let playerSystem = null;
+let traitCustomizer = null;
 let currentId = null;
 let switching = false;
 const clock = new THREE.Clock();
@@ -130,10 +133,15 @@ async function buildScene(option) {
 }
 
 async function attachPlayer(next) {
+  traitCustomizer?.dispose();
+  traitCustomizer = null;
+
   if (playerSystem) {
     playerSystem.dispose();
     playerSystem = null;
   }
+
+  traitsPanel.replaceChildren();
 
   if (!next.playable) {
     explore.controls.enabled = true;
@@ -153,6 +161,7 @@ async function attachPlayer(next) {
     fishingHoles: next.fishingHoles ?? null,
     spawn: next.spawn,
   });
+  traitCustomizer = createTraitCustomizer(playerSystem.traitEquipper, traitsPanel);
   setHint(true);
 }
 
