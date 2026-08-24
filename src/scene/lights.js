@@ -2,26 +2,29 @@ import * as THREE from 'three';
 import { SCENE } from '../config/sceneConfig.js';
 
 /**
- * Ambient + directional sun.
- * @param {THREE.Scene} scene
- * @param {{ target?: {x:number,y:number,z:number}, castShadow?: boolean, sunDistance?: number }} [options]
+ * Ambient + directional sun from Pengu_Plaza.unity.
+ * Toon materials ignore ambient (Unlit); sun direction still drives toon bands.
  */
 export function createLights(scene, options = {}) {
   const targetPos = options.target ?? SCENE.camera.lookAt;
   const castShadow = options.castShadow !== false;
   const sunDistance = options.sunDistance ?? 80;
 
-  const ambient = new THREE.AmbientLight(0xb8e8ff, 0.85);
-  ambient.name = 'AmbientFill';
-  scene.add(ambient);
-
-  const hemi = new THREE.HemisphereLight(
-    SCENE.ambientSky,
-    SCENE.ambientGround,
-    Math.max(SCENE.ambientIntensity, 0.55),
+  // Plaza m_AmbientSkyColor / m_AmbientGroundColor (HDR) × m_AmbientIntensity 0.28
+  const sky = new THREE.Color(0.3345674, 0.68628263, 1.3962264);
+  const ground = new THREE.Color(
+    Math.min(2.6980393, 2),
+    Math.min(5.521569, 2),
+    Math.min(11.168628, 2),
   );
+  const hemi = new THREE.HemisphereLight(sky, ground, SCENE.ambientIntensity);
   hemi.name = 'AmbientHemisphere';
   scene.add(hemi);
+
+  // Soft fill so non-toon (water) isn't pure black in shadows
+  const ambient = new THREE.AmbientLight(0xb8e8ff, 0.22);
+  ambient.name = 'AmbientFill';
+  scene.add(ambient);
 
   const sun = new THREE.DirectionalLight(SCENE.sunColor, SCENE.sunIntensity);
   sun.name = 'DirectionalLight';
@@ -36,6 +39,7 @@ export function createLights(scene, options = {}) {
     sun.shadow.camera.right = 120;
     sun.shadow.camera.top = 120;
     sun.shadow.camera.bottom = -120;
+    sun.shadow.intensity = SCENE.sunShadowStrength ?? 0.55;
   }
 
   const pitch = THREE.MathUtils.degToRad(SCENE.sunEulerDeg.x);

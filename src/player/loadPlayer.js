@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { PLAYER } from '../config/playerConfig.js';
+import { normalizeFbxToMeters } from '../config/units.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
+import { attachHullOutline } from '../rendering/hullOutline.js';
 
 /**
- * Load the same FBX as Unity Player.prefab (Assets/FBXs/player_pudgy.fbx).
- * Model faces +Z in FBX; gameplay forward uses camera/-Z, so rotate 180° on Y.
+ * Load Unity Player.prefab mesh (player_pudgy.fbx).
+ * Already authored in meters — still runs through normalizeFbxToMeters for one unit path.
  */
 export async function loadPlayerModel(loadingManager) {
   const textureLoader = new THREE.TextureLoader(loadingManager);
@@ -20,19 +22,28 @@ export async function loadPlayerModel(loadingManager) {
   traitsMap.flipY = true;
   traitsMap.anisotropy = 8;
 
-  // Unity ToonS_Traits_ColorAtlas
-  const material = createToonMaterial({
+  normalizeFbxToMeters(fbx, { fileUnit: 'm' });
+
+  const base = createToonMaterial({
     map: traitsMap,
     color: 0xffffff,
+    skinning: true,
   });
 
   fbx.name = 'player_pudgy';
+  const meshes = [];
   fbx.traverse((child) => {
-    if (!child.isMesh) return;
+    if (child.isMesh) meshes.push(child);
+  });
+
+  for (const child of meshes) {
     child.castShadow = true;
     child.receiveShadow = true;
     child.frustumCulled = false;
-    child.material = material.clone();
+    const mat = base.clone();
+    mat.skinning = true;
+    child.material = mat;
+    attachHullOutline(child);
 
     if (child.isSkinnedMesh && child.skeleton) {
       child.skeleton.update();
@@ -42,7 +53,7 @@ export async function loadPlayerModel(loadingManager) {
     if (geo && !geo.attributes.uv && geo.attributes.uv1) {
       geo.setAttribute('uv', geo.attributes.uv1);
     }
-  });
+  }
 
   // Face movement/+camera forward (FBX authored the opposite way in Three.js)
   fbx.rotation.y = Math.PI;
@@ -55,6 +66,7 @@ export async function loadPlayerModel(loadingManager) {
 
   const root = new THREE.Group();
   root.name = 'Pudgy_Player';
+  root.userData.units = 'm';
   root.add(fbx);
 
   return {

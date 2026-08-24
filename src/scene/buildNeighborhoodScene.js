@@ -58,7 +58,7 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
   scene.add(wrapper);
 
   const cameraView = cameraViewFromObject(wrapper);
-  createLights(scene, {
+  const lights = createLights(scene, {
     target: cameraView.lookAt,
     castShadow: true,
     sunDistance: Math.max(80, cameraView.orbitDistance),
@@ -68,6 +68,7 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
 
   return {
     scene,
+    lights,
     root: wrapper,
     cameraView,
     playable: true,

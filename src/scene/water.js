@@ -14,11 +14,13 @@ export function createWater() {
     roughness,
     transparent: true,
     opacity: color.a,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
+    depthWrite: false,
   });
 
   const water = new THREE.Mesh(geometry, material);
   water.name = 'Water';
+  water.userData.skipOutline = true;
   water.rotation.x = -Math.PI / 2;
   water.position.set(position.x, position.y, position.z);
   water.scale.set(scale, scale, scale);

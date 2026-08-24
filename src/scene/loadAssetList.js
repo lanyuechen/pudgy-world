@@ -40,7 +40,7 @@ export async function loadAssetListTowns(loadingManager, onProgress) {
     try {
       const root = await fbxLoader.loadAsync(placement.url);
       root.name = placement.name;
-      // File scale cm→m is applied inside prepareFbxRoot; Unity instance scale stays on wrapper.
+      // File scale is normalized to meters inside prepareFbxRoot; Unity instance scale stays on wrapper.
       prepareFbxRoot(root, { ...materials, castShadow: false });
 
       const wrapper = new THREE.Group();

@@ -1,47 +1,78 @@
 import * as THREE from 'three';
 
-/** Unity ToonS_* mat live values from ToonShderGraph. */
+/**
+ * Live values from ToonS_TheBerg_ColorAtlas / ToonS_Traits_ColorAtlas
+ * (ToonShderGraph: Unlit + MainLightDirection only).
+ */
 export const TOON = {
   shades: 0.49,
   minShade: 0.3,
   maxShade: 1.0,
 };
 
-let sharedGradient = null;
+const vertexShader = /* glsl */ `
+  #include <common>
+  #include <uv_pars_vertex>
+  #include <skinning_pars_vertex>
 
-/**
- * Nearest-filtered 1D ramp approximating Unity stepped N·L
- * (remap to [min,max] then quantize by _Shades).
- */
-export function getToonGradientMap() {
-  if (sharedGradient) return sharedGradient;
+  varying vec3 vWorldNormal;
+  varying vec2 vUv;
 
-  // ~2–3 bands between minShade and maxShade
-  const stops = [
-    TOON.minShade,
-    THREE.MathUtils.lerp(TOON.minShade, TOON.maxShade, 0.45),
-    THREE.MathUtils.lerp(TOON.minShade, TOON.maxShade, 0.75),
-    TOON.maxShade,
-  ];
+  void main() {
+    vUv = uv;
 
-  const data = new Uint8Array(stops.length * 4);
-  for (let i = 0; i < stops.length; i++) {
-    const v = Math.round(THREE.MathUtils.clamp(stops[i], 0, 1) * 255);
-    data[i * 4] = v;
-    data[i * 4 + 1] = v;
-    data[i * 4 + 2] = v;
-    data[i * 4 + 3] = 255;
+    #include <beginnormal_vertex>
+    #include <skinbase_vertex>
+    #include <skinnormal_vertex>
+    vec3 transformedNormal = objectNormal;
+    #ifdef USE_INSTANCING
+      mat3 im = mat3(instanceMatrix);
+      transformedNormal /= vec3(dot(im[0], im[0]), dot(im[1], im[1]), dot(im[2], im[2]));
+      transformedNormal = im * transformedNormal;
+    #endif
+    vWorldNormal = normalize((modelMatrix * vec4(transformedNormal, 0.0)).xyz);
+
+    #include <begin_vertex>
+    #include <skinning_vertex>
+    #include <project_vertex>
   }
+`;
 
-  sharedGradient = new THREE.DataTexture(data, stops.length, 1);
-  sharedGradient.magFilter = THREE.NearestFilter;
-  sharedGradient.minFilter = THREE.NearestFilter;
-  sharedGradient.needsUpdate = true;
-  return sharedGradient;
-}
+const fragmentShader = /* glsl */ `
+  uniform sampler2D map;
+  uniform vec3 color;
+  uniform vec3 lightDirection;
+  uniform float shades;
+  uniform float minShade;
+  uniform float maxShade;
+  uniform float opacity;
+  uniform float alphaTest;
+
+  varying vec3 vWorldNormal;
+  varying vec2 vUv;
+
+  void main() {
+    vec4 tex = texture2D(map, vUv);
+    if (tex.a < alphaTest) discard;
+
+    // Unity ToonShderGraph:
+    // r1 = (1 - N·L) * 0.5
+    // q  = floor(r1 / _Shades)
+    // shade = _Max - _Shades * q * (_Max - _Min)
+    vec3 N = normalize(vWorldNormal);
+    vec3 L = normalize(lightDirection);
+    float ndotl = dot(N, L);
+    float r1 = (1.0 - ndotl) * 0.5;
+    float q = floor(r1 / max(shades, 1e-4));
+    float shade = maxShade - shades * q * (maxShade - minShade);
+    shade = clamp(shade, minShade, maxShade);
+
+    gl_FragColor = vec4(tex.rgb * color * shade, tex.a * opacity);
+  }
+`;
 
 /**
- * MeshToonMaterial parity for Unity ToonS_TheBerg / ToonS_Traits / Billboard.
+ * Unity ToonS_* material. Update lightDirection each frame via syncToonLightDirection.
  */
 export function createToonMaterial({
   map = null,
@@ -50,16 +81,56 @@ export function createToonMaterial({
   alphaTest = 0,
   side = THREE.FrontSide,
   depthWrite = true,
+  skinning = false,
 } = {}) {
-  const mat = new THREE.MeshToonMaterial({
-    map,
-    color,
-    gradientMap: getToonGradientMap(),
+  if (!map) {
+    map = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    map.needsUpdate = true;
+  }
+
+  const mat = new THREE.ShaderMaterial({
+    name: 'ToonS_Unity',
+    uniforms: {
+      map: { value: map },
+      color: { value: new THREE.Color(color) },
+      lightDirection: { value: new THREE.Vector3(0.4, 0.85, 0.35).normalize() },
+      shades: { value: TOON.shades },
+      minShade: { value: TOON.minShade },
+      maxShade: { value: TOON.maxShade },
+      opacity: { value: 1 },
+      alphaTest: { value: alphaTest },
+    },
+    vertexShader,
+    fragmentShader,
     transparent,
-    alphaTest,
     side,
     depthWrite,
+    lights: false,
+    fog: false,
+    // Pull surfaces slightly forward to reduce coplanar z-fight on signage layers
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
   });
-  mat.name = 'ToonMaterial';
+
+  if (skinning) mat.skinning = true;
+  mat.userData.isUnityToon = true;
   return mat;
+}
+
+const _toLight = new THREE.Vector3();
+
+/** Main light direction = toward the sun (URP MainLightDirection). */
+export function syncToonLightDirection(root, directionalLight) {
+  if (!directionalLight) return;
+  _toLight.subVectors(directionalLight.position, directionalLight.target.position).normalize();
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const m of mats) {
+      if (m?.userData?.isUnityToon && m.uniforms?.lightDirection) {
+        m.uniforms.lightDirection.value.copy(_toLight);
+      }
+    }
+  });
 }

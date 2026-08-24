@@ -2,32 +2,30 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { OUTLINE } from './outlineConfig.js';
+
+const { pp, ssao } = OUTLINE;
 
 /**
- * Unity M_Outline3 / Outline PP live params (PC_Renderer FullScreenPass).
- * Thickness is UV-scale in Unity (thickness/resolution); we expose pixel width
- * so the Club-Penguin-style edge stays readable at typical resolutions.
+ * Unity Outline PP.shadergraph / M_Outline3.mat
+ * Roberts diagonals on NormalWS + BlitSource (scene color), additive masks, overlay lerp.
+ *
+ * Pipeline (PC_Renderer): scene → SSAO → Outlines FullScreenPass.
+ * Color edges + overlay sample post-SSAO BlitSource (tDiffuse after GTAO).
  */
-export const OUTLINE = {
-  /** Pixel kernel radius (Unity mat thickness 0.5 ≈ sub-pixel; hull adds the rest). */
-  thickness: 1.25,
-  normalThreshold: 0.7,
-  colorThreshold: 0.9,
-  color: new THREE.Color(0x000000),
-  overlay: true,
-};
-
 const OutlineShader = {
   name: 'UnityOutlinePP',
   uniforms: {
     tDiffuse: { value: null },
     tNormal: { value: null },
     resolution: { value: new THREE.Vector2(1, 1) },
-    thickness: { value: OUTLINE.thickness },
-    normalThreshold: { value: OUTLINE.normalThreshold },
-    colorThreshold: { value: OUTLINE.colorThreshold },
-    outlineColor: { value: OUTLINE.color.clone() },
-    overlay: { value: OUTLINE.overlay ? 1 : 0 },
+    thickness: { value: pp.thickness },
+    normalThreshold: { value: pp.normalThreshold },
+    colorThreshold: { value: pp.colorThreshold },
+    outlineColor: { value: pp.color.clone() },
+    overlay: { value: pp.overlay ? 1 : 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -48,92 +46,146 @@ const OutlineShader = {
     varying vec2 vUv;
 
     void main() {
+      // Unity: OutlineThickness / Screen(Width, Height)
       vec2 texel = thickness / resolution;
 
-      // Roberts-style diagonal pairs (matches Outline PP graph sampling pattern)
+      // Roberts diagonals on world-space normals (URP Sample Buffer NormalWorldSpace)
       vec3 n0 = texture2D(tNormal, vUv + vec2( texel.x,  texel.y)).rgb;
       vec3 n1 = texture2D(tNormal, vUv + vec2(-texel.x, -texel.y)).rgb;
       vec3 n2 = texture2D(tNormal, vUv + vec2( texel.x, -texel.y)).rgb;
       vec3 n3 = texture2D(tNormal, vUv + vec2(-texel.x,  texel.y)).rgb;
+      float normalEdge = length(n0 - n1) + length(n2 - n3);
+      float nMask = smoothstep(normalThreshold, 2.0, normalEdge);
 
+      // Color edges on post-SSAO BlitSource (Unity injection after SSAO)
       vec3 c0 = texture2D(tDiffuse, vUv + vec2( texel.x,  texel.y)).rgb;
       vec3 c1 = texture2D(tDiffuse, vUv + vec2(-texel.x, -texel.y)).rgb;
       vec3 c2 = texture2D(tDiffuse, vUv + vec2( texel.x, -texel.y)).rgb;
       vec3 c3 = texture2D(tDiffuse, vUv + vec2(-texel.x,  texel.y)).rgb;
-
-      float normalEdge =
-        length(n0 - n1) +
-        length(n2 - n3);
-      float colorEdge =
-        length(c0 - c1) +
-        length(c2 - c3);
-
-      // Unity graph: smoothstep(threshold, 2.0, edgeLength)
-      float nMask = smoothstep(normalThreshold, 2.0, normalEdge);
+      float colorEdge = length(c0 - c1) + length(c2 - c3);
       float cMask = smoothstep(colorThreshold, 2.0, colorEdge);
+
       float edge = clamp(nMask + cMask, 0.0, 1.0);
 
       vec3 scene = texture2D(tDiffuse, vUv).rgb;
       vec3 outColor = mix(scene, outlineColor, edge);
-      if (overlay < 0.5) {
-        outColor = edge * outlineColor;
-      }
+      if (overlay < 0.5) outColor = edge * outlineColor;
       gl_FragColor = vec4(outColor, 1.0);
     }
   `,
 };
 
-function shouldSkipOutlineObject(obj) {
+/**
+ * World-space normals — Unity URP Sample Buffer NormalWorldSpace / DepthNormals.
+ * Stored raw in HalfFloat RT (xyz in [-1,1]), not MeshNormalMaterial view-space pack.
+ */
+function createWorldNormalMaterial() {
+  return new THREE.ShaderMaterial({
+    name: 'WorldSpaceNormals',
+    vertexShader: /* glsl */ `
+      #include <common>
+      #include <skinning_pars_vertex>
+
+      varying vec3 vWorldNormal;
+
+      void main() {
+        #include <beginnormal_vertex>
+        #include <skinbase_vertex>
+        #include <skinnormal_vertex>
+
+        // Object-space → world (Unity NormalWorldSpace)
+        vWorldNormal = normalize((modelMatrix * vec4(objectNormal, 0.0)).xyz);
+
+        #include <begin_vertex>
+        #include <skinning_vertex>
+        #include <project_vertex>
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec3 vWorldNormal;
+
+      void main() {
+        gl_FragColor = vec4(normalize(vWorldNormal), 1.0);
+      }
+    `,
+    side: THREE.FrontSide,
+    fog: false,
+    lights: false,
+    toneMapped: false,
+  });
+}
+
+/**
+ * Match URP DepthNormals coverage: skip non-mesh / particles / hull only.
+ * Keep water and opaque scene meshes — do not swap background to a fake normal color.
+ */
+function shouldSkipNormalObject(obj) {
   if (!obj.visible) return false;
   if (obj.isPoints || obj.isLine || obj.isSprite) return true;
-  const n = obj.name || '';
-  if (/sky|snow|water|particle/i.test(n)) return true;
-  if (obj.userData?.skipOutline) return true;
+  if (obj.userData?.skipOutline || obj.userData?.isHullOutlineMesh) return true;
   return false;
 }
 
 /**
- * Color render + normal buffer Roberts outline (Unity PC_Renderer Outlines pass).
+ * Color → GTAO (SSAO) → Outline PP → output.
+ * Matches PC_Renderer: SSAO feature then Outlines FullScreenPass (BlitSource = post-SSAO).
  */
 export function createOutlineComposer(renderer, scene, camera) {
+  const size = new THREE.Vector2();
+  renderer.getSize(size);
+  const pr = renderer.getPixelRatio();
+
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
 
+  const gtaoPass = new GTAOPass(scene, camera, size.x, size.y);
+  gtaoPass.output = GTAOPass.OUTPUT.Default;
+  if (gtaoPass.updateGtaoMaterial) {
+    gtaoPass.updateGtaoMaterial({
+      radius: ssao.radius,
+      thickness: 1,
+      scale: ssao.intensity,
+    });
+  }
+  gtaoPass.blendIntensity = ssao.intensity;
+  composer.addPass(gtaoPass);
+
+  // HalfFloat so world normals stay in [-1, 1] like Unity Sample Buffer
   const normalTarget = new THREE.WebGLRenderTarget(1, 1, {
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     type: THREE.HalfFloatType,
     depthBuffer: true,
   });
-  normalTarget.texture.name = 'OutlineNormalBuffer';
+  normalTarget.texture.colorSpace = THREE.NoColorSpace;
 
-  const normalMaterial = new THREE.MeshNormalMaterial({
-    flatShading: false,
-  });
-
+  const normalMaterial = createWorldNormalMaterial();
   const outlinePass = new ShaderPass(OutlineShader);
   outlinePass.uniforms.tNormal.value = normalTarget.texture;
+  // Outline receives tDiffuse from GTAO output (= Unity BlitSource after SSAO)
   composer.addPass(outlinePass);
+  composer.addPass(new OutputPass());
 
   const hidden = [];
+  const clearColor = new THREE.Color(0x000000);
+  const prevClear = new THREE.Color();
 
   function setSize(width, height, pixelRatio = renderer.getPixelRatio()) {
     composer.setPixelRatio(pixelRatio);
     composer.setSize(width, height);
     const w = Math.max(1, Math.floor(width * pixelRatio));
     const h = Math.max(1, Math.floor(height * pixelRatio));
+    gtaoPass.setSize(w, h);
     normalTarget.setSize(w, h);
     outlinePass.uniforms.resolution.value.set(w, h);
   }
 
-  const initial = new THREE.Vector2();
-  renderer.getSize(initial);
-  setSize(initial.x, initial.y, renderer.getPixelRatio());
+  setSize(size.x, size.y, pr);
 
   function renderNormals() {
     hidden.length = 0;
     scene.traverse((obj) => {
-      if (shouldSkipOutlineObject(obj) && obj.visible) {
+      if (shouldSkipNormalObject(obj) && obj.visible) {
         obj.visible = false;
         hidden.push(obj);
       }
@@ -142,19 +194,23 @@ export function createOutlineComposer(renderer, scene, camera) {
     const prevOverride = scene.overrideMaterial;
     const prevBg = scene.background;
     const prevAutoClear = renderer.autoClear;
+    renderer.getClearColor(prevClear);
+    const prevClearAlpha = renderer.getClearAlpha();
 
+    // Empty DepthNormals = (0,0,0). Do not paint sky cyan/purple into the normal RT.
     scene.overrideMaterial = normalMaterial;
-    scene.background = new THREE.Color(0x7777ff);
-    renderer.autoClear = true;
+    scene.background = null;
+    renderer.autoClear = false;
+    renderer.setClearColor(clearColor, 1);
     renderer.setRenderTarget(normalTarget);
-    renderer.clear();
+    renderer.clear(true, true, true);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
 
+    renderer.setClearColor(prevClear, prevClearAlpha);
+    renderer.autoClear = prevAutoClear;
     scene.overrideMaterial = prevOverride;
     scene.background = prevBg;
-    renderer.autoClear = prevAutoClear;
-
     for (const obj of hidden) obj.visible = true;
   }
 
@@ -169,11 +225,5 @@ export function createOutlineComposer(renderer, scene, camera) {
     normalMaterial.dispose();
   }
 
-  return {
-    composer,
-    outlinePass,
-    render,
-    setSize,
-    dispose,
-  };
+  return { composer, outlinePass, gtaoPass, render, setSize, dispose };
 }

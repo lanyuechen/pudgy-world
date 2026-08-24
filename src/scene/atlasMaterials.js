@@ -1,13 +1,18 @@
 import * as THREE from 'three';
 import { SCENE } from '../config/sceneConfig.js';
+import { normalizeFbxToMeters } from '../config/units.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
+import { attachHullOutline } from '../rendering/hullOutline.js';
 
-function isBillboard(name = '') {
-  return name.toLowerCase().includes('billboard');
+function usesBillboardAtlas(mesh) {
+  const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return mats.some((m) => /billboard/i.test(m?.name || ''));
 }
 
 /**
- * Shared TheBerg / Billboard atlas materials (Unity ToonS_* + flipY for FBX UVs).
+ * Shared TheBerg / Billboard atlas materials.
+ * Unity Toon_BillboardTexture_02 is opaque toon (_AlphaClip 0, cull back) —
+ * RoadSign etc. share that atlas and must NOT use transparent DoubleSide cutout.
  */
 export async function createAtlasMaterials(loadingManager) {
   const textureLoader = new THREE.TextureLoader(loadingManager);
@@ -31,38 +36,36 @@ export async function createAtlasMaterials(loadingManager) {
   const billboardMaterial = createToonMaterial({
     map: billboardMap,
     color: 0xffffff,
-    transparent: true,
-    alphaTest: 0.35,
-    side: THREE.DoubleSide,
-    depthWrite: false,
   });
 
   return { bergMaterial, billboardMaterial, bergMap, billboardMap };
 }
 
 /**
- * Apply atlas materials to an FBX root. Unity useFileScale → scale 0.01 (cm→m).
+ * Apply atlas materials + hull outline, and normalize FBX to meters (cm→m).
  */
 export function prepareFbxRoot(root, { bergMaterial, billboardMaterial, castShadow = true } = {}) {
-  root.scale.setScalar(0.01);
+  // Land / Asset_List FBXs are authored in centimeters
+  normalizeFbxToMeters(root, { fileUnit: 'cm' });
 
+  const meshes = [];
   root.traverse((child) => {
-    if (!child.isMesh) return;
+    if (child.isMesh) meshes.push(child);
+  });
 
+  for (const child of meshes) {
     child.castShadow = castShadow;
     child.receiveShadow = true;
 
-    const matList = Array.isArray(child.material) ? child.material : [child.material];
-    const useBillboard =
-      isBillboard(child.name) || matList.some((m) => isBillboard(m?.name));
-
-    child.material = useBillboard ? billboardMaterial.clone() : bergMaterial.clone();
+    const base = (usesBillboardAtlas(child) ? billboardMaterial : bergMaterial).clone();
+    child.material = base;
+    attachHullOutline(child);
 
     const geo = child.geometry;
     if (geo && !geo.attributes.uv && geo.attributes.uv1) {
       geo.setAttribute('uv', geo.attributes.uv1);
     }
-  });
+  }
 
   return root;
 }

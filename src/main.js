@@ -6,6 +6,7 @@ import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
 import { createOutlineComposer } from './rendering/outlineComposer.js';
+import { syncToonLightDirection } from './rendering/toonMaterial.js';
 
 const sceneOptions = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
@@ -52,8 +53,9 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+// Plaza SampleSceneProfile tonemapping is inactive; Unlit toon looks closest without ACES washout
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.toneMappingExposure = 1;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -199,6 +201,9 @@ function animate() {
   }
   world?.update?.(dt);
   if (world?.scene) {
+    if (world.lights?.sun) {
+      syncToonLightDirection(world.scene, world.lights.sun);
+    }
     if (outlineComposer) outlineComposer.render();
     else renderer.render(world.scene, camera);
   }

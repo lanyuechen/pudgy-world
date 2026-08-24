@@ -46,8 +46,8 @@ export function createSnow(texture) {
     sizeAttenuation: true,
     transparent: true,
     opacity: 0.85,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    depthWrite: true,
+    blending: THREE.NormalBlending,
   });
   if (texture) {
     texture.colorSpace = THREE.SRGBColorSpace;
