@@ -1,7 +1,7 @@
 import assetListData from './assetListPlacements.json';
 import { INTRO } from './introConfig.js';
 
-const WORLD_MAP_ID = 'TheBerg';
+const WORLD_MAP_ID = 'WorldMap';
 const EXTRAS_CATALOG_ID = 'Asset_List';
 const PLAZA_ID = 'Individual_PenguPlaza_02';
 const INTRO_ID = INTRO.id;
@@ -22,7 +22,7 @@ function isIndividualTown(name) {
 /**
  * Scene dropdown:
  * 0. Intro
- * 1. Neighborhoods — continuous TheBerg world map
+ * 1. Neighborhoods — continuous World Map
  * 2. Individuals — standalone town islands
  * 3. Extras — props + full catalog layout
  *
@@ -77,7 +77,7 @@ export function getSceneOptions() {
 
   const worldMap = {
     id: WORLD_MAP_ID,
-    label: 'TheBerg (World Map)',
+    label: 'World Map',
     placement: null,
     isIntro: false,
     isTheBerg: true,

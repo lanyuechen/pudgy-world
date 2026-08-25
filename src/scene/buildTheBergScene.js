@@ -5,12 +5,12 @@ import { loadTheBergLand } from './loadTheBerg.js';
 import { THE_BERG_CAMERA } from '../config/theBergAssets.js';
 
 /**
- * Continuous TheBerg map: base + Berg_Filler + Neighborhood_V_02
- * (artist world-space layout — playable world map).
+ * Continuous world map: base + Berg_Filler + Neighborhood_V_02
+ * (explore-only overview — not playable, no NPCs).
  */
 export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
   const scene = new THREE.Scene();
-  scene.name = 'TheBerg';
+  scene.name = 'WorldMap';
   scene.background = new THREE.Color(0x7ad8ef);
 
   const sky = createProceduralSky(2500);
@@ -23,7 +23,7 @@ export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
     sunDistance: 500,
   });
 
-  onProgress?.('Loading TheBerg…', 0.05);
+  onProgress?.('Loading World Map…', 0.05);
   const land = await loadTheBergLand(loadingManager, (msg, ratio) => {
     onProgress?.(msg, 0.05 + ratio * 0.9);
   });
@@ -34,13 +34,7 @@ export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
     lights,
     land,
     cameraView: THE_BERG_CAMERA,
-    playable: true,
-    collisionRoot: land,
-    spawn: {
-      x: look.x,
-      y: Math.max(look.y + 20, 30),
-      z: look.z,
-    },
+    playable: false,
     update() {},
   };
 }

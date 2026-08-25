@@ -295,6 +295,7 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (playerSystem) {
     playerSystem.update(dt);
+    world?.update?.(dt);
   } else if (world?.isIntro) {
     const done = world.update?.(dt, { camera, controls: explore.controls });
     if (done) finishIntro();
