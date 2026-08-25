@@ -20,6 +20,30 @@ body,
   height: 100%;
 }
 
+#intro-skip {
+  position: fixed;
+  right: 20px;
+  bottom: 22px;
+  z-index: 6;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: rgba(12, 36, 48, 0.72);
+  color: #e8fbff;
+  font: 600 13px/1 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+#intro-skip:hover {
+  background: rgba(20, 58, 72, 0.88);
+}
+
+#intro-skip[hidden] {
+  display: none;
+}
+
 #loading {
   position: fixed;
   inset: 0;

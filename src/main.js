@@ -4,9 +4,11 @@ import { buildPenguPlazaScene } from './scene/buildScene.js';
 import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
 import { buildAssetListScene } from './scene/buildAssetListScene.js';
 import { buildTheBergScene } from './scene/buildTheBergScene.js';
+import { buildIntroScene } from './scene/buildIntroScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
-import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
+import { getSceneOptions, DEFAULT_SCENE_ID, THE_BERG_SCENE_ID } from './config/sceneOptions.js';
+import { INTRO } from './config/introConfig.js';
 import { remapFbxTextureUrl } from './config/assetUrl.js';
 import { createOutlineComposer } from './rendering/outlineComposer.js';
 import { syncToonLightDirection } from './rendering/toonMaterial.js';
@@ -25,6 +27,7 @@ const configRoot = document.getElementById('config');
 const configToggle = document.getElementById('config-toggle');
 const configPanel = document.getElementById('config-panel');
 const traitsPanel = document.getElementById('traits-panel');
+const introSkipEl = document.getElementById('intro-skip');
 
 for (const group of sceneGroups) {
   const og = document.createElement('optgroup');
@@ -115,10 +118,24 @@ function bindOutlineComposer(scene) {
   outlineComposer.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
 }
 
-function setHint(playable) {
+function setHint(playable, isIntro = false) {
+  if (isIntro) {
+    hintEl.textContent = 'Intro · Click Skip or press Space / Enter to continue';
+    return;
+  }
   hintEl.textContent = playable
     ? 'WASD move · Shift slide · Space jump · F throw · Click fish · Hold drag look · Scroll zoom'
     : 'LMB drag: orbit · RMB / wheel: pan / zoom · Space: reset';
+}
+
+function setIntroSkipVisible(visible) {
+  if (!introSkipEl) return;
+  introSkipEl.hidden = !visible;
+}
+
+function finishIntro() {
+  if (currentId !== INTRO.id || switching) return;
+  loadScene(INTRO.nextSceneId || THE_BERG_SCENE_ID).catch(() => {});
 }
 
 function sceneIdFromHash() {
@@ -127,6 +144,12 @@ function sceneIdFromHash() {
 }
 
 async function buildScene(option) {
+  if (option.isIntro) {
+    return buildIntroScene({
+      loadingManager,
+      onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
+    });
+  }
   if (option.isTheBerg) {
     return buildTheBergScene({
       loadingManager,
@@ -162,8 +185,15 @@ async function attachPlayer(next) {
   }
 
   traitsPanel.replaceChildren();
+  setIntroSkipVisible(Boolean(next.isIntro));
 
   if (!next.playable) {
+    if (next.isIntro) {
+      explore.controls.enabled = false;
+      explore.applyView(next.cameraView);
+      setHint(false, true);
+      return;
+    }
     explore.controls.enabled = true;
     explore.applyView(next.cameraView);
     setHint(false);
@@ -236,6 +266,10 @@ async function loadScene(id, { pushHash = true } = {}) {
   }
 }
 
+introSkipEl?.addEventListener('click', () => {
+  finishIntro();
+});
+
 selectEl.addEventListener('change', () => {
   loadScene(selectEl.value).catch(() => {});
 });
@@ -245,6 +279,11 @@ window.addEventListener('hashchange', () => {
 });
 
 window.addEventListener('keydown', (e) => {
+  if (world?.isIntro && (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape')) {
+    e.preventDefault();
+    finishIntro();
+    return;
+  }
   if (e.code === 'Space' && !playerSystem) {
     e.preventDefault();
     explore.reset();
@@ -256,10 +295,13 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (playerSystem) {
     playerSystem.update(dt);
+  } else if (world?.isIntro) {
+    const done = world.update?.(dt, { camera, controls: explore.controls });
+    if (done) finishIntro();
   } else {
     explore.controls.update();
+    world?.update?.(dt);
   }
-  world?.update?.(dt);
   if (world?.scene) {
     if (world.lights?.sun) {
       syncToonLightDirection(world.scene, world.lights.sun);

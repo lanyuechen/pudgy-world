@@ -1,9 +1,11 @@
 import assetListData from './assetListPlacements.json';
+import { INTRO } from './introConfig.js';
 
 const WORLD_MAP_ID = 'TheBerg';
 const EXTRAS_CATALOG_ID = 'Asset_List';
 const PLAZA_ID = 'Individual_PenguPlaza_02';
-const DEFAULT_ID = WORLD_MAP_ID;
+const INTRO_ID = INTRO.id;
+const DEFAULT_ID = INTRO_ID;
 
 function toLabel(name) {
   return name
@@ -18,7 +20,8 @@ function isIndividualTown(name) {
 }
 
 /**
- * Scene dropdown in three groups matching public/assets/models layout:
+ * Scene dropdown:
+ * 0. Intro
  * 1. Neighborhoods — continuous TheBerg world map
  * 2. Individuals — standalone town islands
  * 3. Extras — props + full catalog layout
@@ -40,6 +43,7 @@ export function getSceneOptions() {
       id: p.name,
       label: toLabel(p.name),
       placement: byName.get(p.name),
+      isIntro: false,
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: p.name === PLAZA_ID,
@@ -53,16 +57,29 @@ export function getSceneOptions() {
       id: p.name,
       label: toLabel(p.name),
       placement: byName.get(p.name),
+      isIntro: false,
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: false,
       group: 'extras',
     }));
 
+  const intro = {
+    id: INTRO_ID,
+    label: 'Intro',
+    placement: null,
+    isIntro: true,
+    isTheBerg: false,
+    isAssetList: false,
+    isPenguPlaza: false,
+    group: 'intro',
+  };
+
   const worldMap = {
     id: WORLD_MAP_ID,
     label: 'TheBerg (World Map)',
     placement: null,
+    isIntro: false,
     isTheBerg: true,
     isAssetList: false,
     isPenguPlaza: false,
@@ -73,6 +90,7 @@ export function getSceneOptions() {
     id: EXTRAS_CATALOG_ID,
     label: 'Catalog (All placements)',
     placement: null,
+    isIntro: false,
     isTheBerg: false,
     isAssetList: true,
     isPenguPlaza: false,
@@ -80,6 +98,11 @@ export function getSceneOptions() {
   };
 
   const groups = [
+    {
+      id: 'intro',
+      label: 'Intro',
+      options: [intro],
+    },
     {
       id: 'neighborhoods',
       label: 'Neighborhoods',
@@ -104,5 +127,6 @@ export function getSceneOptions() {
 }
 
 export const DEFAULT_SCENE_ID = DEFAULT_ID;
+export const INTRO_SCENE_ID = INTRO_ID;
 export const THE_BERG_SCENE_ID = WORLD_MAP_ID;
 export const ASSET_LIST_SCENE_ID = EXTRAS_CATALOG_ID;
