@@ -1,6 +1,7 @@
 import assetListData from './assetListPlacements.json';
 import { INTRO } from './introConfig.js';
 import { LEVEL_PROPS, LEVEL_PROP_TRANSFORM } from './levelsConfig.js';
+import { NPC_MODELS } from './npcConfig.js';
 
 const WORLD_MAP_ID = 'WorldMap';
 const EXTRAS_CATALOG_ID = 'Asset_List';
@@ -10,14 +11,20 @@ const DEFAULT_ID = INTRO_ID;
 
 function toLabel(name) {
   return name
-    .replace(/^(Individual_|Environment_|Asset_|Extras_|Anim_|Animation_|Collider_)/, '')
+    .replace(/^(Individual_|Environment_|Asset_|Extras_|Anim_|Animation_|Collider_|NPC_)/, '')
     .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/\s+0?(\d+)$/, ' $1')
     .trim();
 }
 
 function townLabel(town) {
   return town.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+function npcLabel(_modelKey, url) {
+  const file = url.split('/').pop()?.replace(/\.fbx$/i, '') || _modelKey;
+  return toLabel(file);
 }
 
 /** Town preview islands (Individual_* + Environment_*). */
@@ -30,8 +37,9 @@ function isIndividualTown(name) {
  * 0. Intro
  * 1. Neighborhoods — continuous World Map
  * 2. Individuals — standalone town islands
- * 3. Levels — quest / collectible props
- * 4. Extras — props + full catalog layout
+ * 3. NPCs — character model previews
+ * 4. Levels — quest / collectible props
+ * 5. Extras — props + full catalog layout
  *
  * @returns {{ groups: Array<{ id: string, label: string, options: object[] }>, flat: object[] }}
  */
@@ -54,8 +62,24 @@ export function getSceneOptions() {
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: false,
+      isNpcPreview: false,
       group: 'individuals',
     }));
+
+  const npcs = Object.entries(NPC_MODELS)
+    .map(([key, url]) => ({
+      id: `NPC_${key}`,
+      label: npcLabel(key, url),
+      modelKey: key,
+      placement: null,
+      isIntro: false,
+      isTheBerg: false,
+      isAssetList: false,
+      isPenguPlaza: false,
+      isNpcPreview: true,
+      group: 'npcs',
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const levels = LEVEL_PROPS.map((prop) => ({
     id: `Level_${prop.town}_${prop.name}`,
@@ -70,6 +94,7 @@ export function getSceneOptions() {
     isTheBerg: false,
     isAssetList: false,
     isPenguPlaza: false,
+    isNpcPreview: false,
     group: 'levels',
   }));
 
@@ -84,6 +109,7 @@ export function getSceneOptions() {
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: false,
+      isNpcPreview: false,
       group: 'extras',
     }));
 
@@ -95,6 +121,7 @@ export function getSceneOptions() {
     isTheBerg: false,
     isAssetList: false,
     isPenguPlaza: false,
+    isNpcPreview: false,
     group: 'intro',
   };
 
@@ -106,6 +133,7 @@ export function getSceneOptions() {
     isTheBerg: true,
     isAssetList: false,
     isPenguPlaza: false,
+    isNpcPreview: false,
     group: 'neighborhoods',
   };
 
@@ -117,6 +145,7 @@ export function getSceneOptions() {
     isTheBerg: false,
     isAssetList: true,
     isPenguPlaza: false,
+    isNpcPreview: false,
     group: 'extras',
   };
 
@@ -135,6 +164,11 @@ export function getSceneOptions() {
       id: 'individuals',
       label: 'Individuals',
       options: individuals,
+    },
+    {
+      id: 'npcs',
+      label: 'NPCs',
+      options: npcs,
     },
     {
       id: 'levels',

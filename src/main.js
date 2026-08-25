@@ -5,6 +5,7 @@ import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
 import { buildAssetListScene } from './scene/buildAssetListScene.js';
 import { buildTheBergScene } from './scene/buildTheBergScene.js';
 import { buildIntroScene } from './scene/buildIntroScene.js';
+import { buildNpcPreviewScene } from './scene/buildNpcPreviewScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID, THE_BERG_SCENE_ID } from './config/sceneOptions.js';
@@ -168,10 +169,16 @@ async function buildScene(option) {
       onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
     });
   }
+  if (option.isNpcPreview) {
+    return buildNpcPreviewScene(option.modelKey, {
+      loadingManager,
+      onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
+    });
+  }
   return buildNeighborhoodScene(option.placement, {
     loadingManager,
     onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
-    // Individuals are playable; Levels + Extras stay explore-only.
+    // Individuals are playable; Levels / Extras / NPCs stay explore-only.
     playable: option.group === 'individuals',
   });
 }
