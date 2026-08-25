@@ -1,5 +1,6 @@
 import assetListData from './assetListPlacements.json';
 import { INTRO } from './introConfig.js';
+import { LEVEL_PROPS, LEVEL_PROP_TRANSFORM } from './levelsConfig.js';
 
 const WORLD_MAP_ID = 'WorldMap';
 const EXTRAS_CATALOG_ID = 'Asset_List';
@@ -11,7 +12,12 @@ function toLabel(name) {
   return name
     .replace(/^(Individual_|Environment_|Asset_|Extras_|Anim_|Animation_|Collider_)/, '')
     .replace(/_/g, ' ')
+    .replace(/\s+0?(\d+)$/, ' $1')
     .trim();
+}
+
+function townLabel(town) {
+  return town.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
 /** Town preview islands (Individual_* + Environment_*). */
@@ -24,7 +30,8 @@ function isIndividualTown(name) {
  * 0. Intro
  * 1. Neighborhoods — continuous World Map
  * 2. Individuals — standalone town islands
- * 3. Extras — props + full catalog layout
+ * 3. Levels — quest / collectible props
+ * 4. Extras — props + full catalog layout
  *
  * @returns {{ groups: Array<{ id: string, label: string, options: object[] }>, flat: object[] }}
  */
@@ -46,9 +53,25 @@ export function getSceneOptions() {
       isIntro: false,
       isTheBerg: false,
       isAssetList: false,
-      isPenguPlaza: p.name === PLAZA_ID,
+      isPenguPlaza: false,
       group: 'individuals',
     }));
+
+  const levels = LEVEL_PROPS.map((prop) => ({
+    id: `Level_${prop.town}_${prop.name}`,
+    label: `${townLabel(prop.town)} · ${toLabel(prop.name)}`,
+    placement: {
+      name: prop.name,
+      url: prop.url,
+      position: { x: 0, y: 0, z: 0 },
+      ...LEVEL_PROP_TRANSFORM,
+    },
+    isIntro: false,
+    isTheBerg: false,
+    isAssetList: false,
+    isPenguPlaza: false,
+    group: 'levels',
+  }));
 
   const extras = placements
     .filter((p) => !isIndividualTown(p.name))
@@ -112,6 +135,11 @@ export function getSceneOptions() {
       id: 'individuals',
       label: 'Individuals',
       options: individuals,
+    },
+    {
+      id: 'levels',
+      label: 'Levels',
+      options: levels,
     },
     {
       id: 'extras',

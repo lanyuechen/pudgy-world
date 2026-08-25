@@ -171,7 +171,8 @@ async function buildScene(option) {
   return buildNeighborhoodScene(option.placement, {
     loadingManager,
     onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
-    playable: option.group !== 'extras',
+    // Individuals are playable; Levels + Extras stay explore-only.
+    playable: option.group === 'individuals',
   });
 }
 

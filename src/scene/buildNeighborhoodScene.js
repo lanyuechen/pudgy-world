@@ -30,7 +30,7 @@ function cameraViewFromObject(object) {
 
 /**
  * Single placement as its own scene (model at origin).
- * Individuals are playable; Extras stay explore-only.
+ * Individuals are playable; Levels / Extras stay explore-only.
  */
 export async function buildNeighborhoodScene(
   placement,
