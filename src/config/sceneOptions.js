@@ -4,7 +4,6 @@ import { LEVEL_PROPS, LEVEL_PROP_TRANSFORM } from './levelsConfig.js';
 import { NPC_MODELS } from './npcConfig.js';
 
 const WORLD_MAP_ID = 'WorldMap';
-const EXTRAS_CATALOG_ID = 'Asset_List';
 const PLAZA_ID = 'Individual_PenguPlaza_02';
 const INTRO_ID = INTRO.id;
 const DEFAULT_ID = INTRO_ID;
@@ -39,7 +38,7 @@ function isIndividualTown(name) {
  * 2. Individuals — standalone town islands
  * 3. NPCs — character model previews
  * 4. Levels — quest / collectible props
- * 5. Extras — props + full catalog layout
+ * 5. Extras — individual prop previews
  *
  * @returns {{ groups: Array<{ id: string, label: string, options: object[] }>, flat: object[] }}
  */
@@ -137,18 +136,6 @@ export function getSceneOptions() {
     group: 'neighborhoods',
   };
 
-  const extrasCatalog = {
-    id: EXTRAS_CATALOG_ID,
-    label: 'Catalog (All placements)',
-    placement: null,
-    isIntro: false,
-    isTheBerg: false,
-    isAssetList: true,
-    isPenguPlaza: false,
-    isNpcPreview: false,
-    group: 'extras',
-  };
-
   const groups = [
     {
       id: 'intro',
@@ -178,7 +165,7 @@ export function getSceneOptions() {
     {
       id: 'extras',
       label: 'Extras',
-      options: [extrasCatalog, ...extras],
+      options: extras,
     },
   ];
 
@@ -191,4 +178,3 @@ export function getSceneOptions() {
 export const DEFAULT_SCENE_ID = DEFAULT_ID;
 export const INTRO_SCENE_ID = INTRO_ID;
 export const THE_BERG_SCENE_ID = WORLD_MAP_ID;
-export const ASSET_LIST_SCENE_ID = EXTRAS_CATALOG_ID;
