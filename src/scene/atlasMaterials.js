@@ -43,10 +43,17 @@ export async function createAtlasMaterials(loadingManager) {
 
 /**
  * Apply atlas materials + hull outline, and normalize FBX to meters (cm→m).
+ * Pass skipNormalize when the root will sit under a shared cm→m scale parent
+ * (world-authored Neighborhood / TheBerg pieces keep cm transforms).
  */
-export function prepareFbxRoot(root, { bergMaterial, billboardMaterial, castShadow = true } = {}) {
+export function prepareFbxRoot(
+  root,
+  { bergMaterial, billboardMaterial, castShadow = true, skipNormalize = false } = {},
+) {
   // Land / Asset_List FBXs are authored in centimeters
-  normalizeFbxToMeters(root, { fileUnit: 'cm' });
+  if (!skipNormalize) {
+    normalizeFbxToMeters(root, { fileUnit: 'cm' });
+  }
 
   const meshes = [];
   root.traverse((child) => {

@@ -2,6 +2,8 @@ import './styles.css';
 import * as THREE from 'three';
 import { buildPenguPlazaScene } from './scene/buildScene.js';
 import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
+import { buildAssetListScene } from './scene/buildAssetListScene.js';
+import { buildTheBergScene } from './scene/buildTheBergScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID } from './config/sceneOptions.js';
@@ -120,6 +122,18 @@ function sceneIdFromHash() {
 }
 
 async function buildScene(option) {
+  if (option.isTheBerg) {
+    return buildTheBergScene({
+      loadingManager,
+      onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
+    });
+  }
+  if (option.isAssetList) {
+    return buildAssetListScene({
+      loadingManager,
+      onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
+    });
+  }
   if (option.isPenguPlaza) {
     return buildPenguPlazaScene({
       loadingManager,

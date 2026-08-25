@@ -32,6 +32,7 @@ export async function buildAssetListScene({ loadingManager, onProgress } = {}) {
     lights,
     towns,
     cameraView: assetListData.camera,
+    playable: false,
     update() {},
   };
 }

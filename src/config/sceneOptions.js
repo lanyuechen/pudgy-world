@@ -1,6 +1,9 @@
 import assetListData from './assetListPlacements.json';
 
-const DEFAULT_ID = 'Individual_PenguPlaza_02';
+const THE_BERG_ID = 'TheBerg';
+const ASSET_LIST_ID = 'Asset_List';
+const PLAZA_ID = 'Individual_PenguPlaza_02';
+const DEFAULT_ID = THE_BERG_ID;
 
 function toLabel(name) {
   return name
@@ -17,8 +20,8 @@ function isNeighborhood(name) {
 }
 
 /**
- * Dropdown options from Asset_List placements.
- * Neighborhoods first (PenguPlaza default), then extras/props.
+ * Dropdown options:
+ * TheBerg (continuous map) → Asset_List catalog → single neighborhoods → extras.
  */
 export function getSceneOptions() {
   const placements = assetListData.placements;
@@ -27,8 +30,8 @@ export function getSceneOptions() {
   const neighborhoods = placements
     .filter((p) => isNeighborhood(p.name))
     .sort((a, b) => {
-      if (a.name === DEFAULT_ID) return -1;
-      if (b.name === DEFAULT_ID) return 1;
+      if (a.name === PLAZA_ID) return -1;
+      if (b.name === PLAZA_ID) return 1;
       return toLabel(a.name).localeCompare(toLabel(b.name));
     });
 
@@ -36,12 +39,46 @@ export function getSceneOptions() {
     .filter((p) => !isNeighborhood(p.name))
     .sort((a, b) => toLabel(a.name).localeCompare(toLabel(b.name)));
 
-  return [...neighborhoods, ...extras].map((p) => ({
-    id: p.name,
-    label: toLabel(p.name),
-    placement: byName.get(p.name),
-    isPenguPlaza: p.name === DEFAULT_ID,
-  }));
+  const theBerg = {
+    id: THE_BERG_ID,
+    label: 'TheBerg (World Map)',
+    placement: null,
+    isTheBerg: true,
+    isAssetList: false,
+    isPenguPlaza: false,
+  };
+
+  const assetList = {
+    id: ASSET_LIST_ID,
+    label: 'Asset List (Catalog)',
+    placement: null,
+    isTheBerg: false,
+    isAssetList: true,
+    isPenguPlaza: false,
+  };
+
+  return [
+    theBerg,
+    assetList,
+    ...neighborhoods.map((p) => ({
+      id: p.name,
+      label: toLabel(p.name),
+      placement: byName.get(p.name),
+      isTheBerg: false,
+      isAssetList: false,
+      isPenguPlaza: p.name === PLAZA_ID,
+    })),
+    ...extras.map((p) => ({
+      id: p.name,
+      label: toLabel(p.name),
+      placement: byName.get(p.name),
+      isTheBerg: false,
+      isAssetList: false,
+      isPenguPlaza: false,
+    })),
+  ];
 }
 
 export const DEFAULT_SCENE_ID = DEFAULT_ID;
+export const THE_BERG_SCENE_ID = THE_BERG_ID;
+export const ASSET_LIST_SCENE_ID = ASSET_LIST_ID;
