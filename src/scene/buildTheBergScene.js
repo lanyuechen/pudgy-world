@@ -6,7 +6,7 @@ import { THE_BERG_CAMERA } from '../config/theBergAssets.js';
 
 /**
  * Continuous TheBerg map: base + Berg_Filler + Neighborhood_V_02
- * (artist world-space layout — not Asset_List showcase islands).
+ * (artist world-space layout — playable world map).
  */
 export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
   const scene = new THREE.Scene();
@@ -34,7 +34,13 @@ export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
     lights,
     land,
     cameraView: THE_BERG_CAMERA,
-    playable: false,
+    playable: true,
+    collisionRoot: land,
+    spawn: {
+      x: look.x,
+      y: Math.max(look.y + 20, 30),
+      z: look.z,
+    },
     update() {},
   };
 }

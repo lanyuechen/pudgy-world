@@ -12,7 +12,7 @@ import { createOutlineComposer } from './rendering/outlineComposer.js';
 import { syncToonLightDirection } from './rendering/toonMaterial.js';
 import { createTraitCustomizer } from './ui/traitCustomizer.js';
 
-const sceneOptions = getSceneOptions();
+const { groups: sceneGroups, flat: sceneOptions } = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
 
 const canvas = document.getElementById('c');
@@ -26,11 +26,16 @@ const configToggle = document.getElementById('config-toggle');
 const configPanel = document.getElementById('config-panel');
 const traitsPanel = document.getElementById('traits-panel');
 
-for (const opt of sceneOptions) {
-  const el = document.createElement('option');
-  el.value = opt.id;
-  el.textContent = opt.label;
-  selectEl.appendChild(el);
+for (const group of sceneGroups) {
+  const og = document.createElement('optgroup');
+  og.label = group.label;
+  for (const opt of group.options) {
+    const el = document.createElement('option');
+    el.value = opt.id;
+    el.textContent = opt.label;
+    og.appendChild(el);
+  }
+  selectEl.appendChild(og);
 }
 selectEl.value = DEFAULT_SCENE_ID;
 
@@ -143,6 +148,7 @@ async function buildScene(option) {
   return buildNeighborhoodScene(option.placement, {
     loadingManager,
     onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
+    playable: option.group !== 'extras',
   });
 }
 
@@ -165,6 +171,10 @@ async function attachPlayer(next) {
   }
 
   explore.controls.enabled = false;
+  if (next.cameraView?.far) {
+    camera.far = next.cameraView.far;
+    camera.updateProjectionMatrix();
+  }
   setProgress(0.92, 'Spawning player…');
   playerSystem = await createPlayerSystem({
     scene: next.scene,

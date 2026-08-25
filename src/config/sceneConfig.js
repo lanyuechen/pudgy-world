@@ -66,7 +66,7 @@ export const SCENE = {
   },
 
   assets: {
-    plazaFbx: assetUrl('/assets/models/asset-list/Individual_PenguPlaza_02.fbx'),
+    plazaFbx: assetUrl('/assets/models/individuals/Individual_PenguPlaza_02.fbx'),
     bergAtlas: assetUrl('/assets/textures/TheBerg_ColorAtlas.png'),
     billboardAtlas: assetUrl('/assets/textures/BillboardTexture_02.png'),
     snowParticle: assetUrl('/assets/textures/snow-particle.png'),

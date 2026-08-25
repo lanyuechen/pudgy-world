@@ -4,7 +4,7 @@ import { createLights } from './lights.js';
 import { loadAssetListTowns, assetListData } from './loadAssetList.js';
 
 /**
- * Asset_List.unity — neighborhood / extras showcase (no water/snow/gameplay).
+ * Asset catalog showcase — extras layout, explore-only (not playable).
  */
 export async function buildAssetListScene({ loadingManager, onProgress } = {}) {
   const scene = new THREE.Scene();
@@ -21,7 +21,7 @@ export async function buildAssetListScene({ loadingManager, onProgress } = {}) {
     sunDistance: 400,
   });
 
-  onProgress?.('Loading Asset List towns…', 0.05);
+  onProgress?.('Loading catalog…', 0.05);
   const towns = await loadAssetListTowns(loadingManager, (msg, ratio) => {
     onProgress?.(msg, 0.05 + ratio * 0.9);
   });

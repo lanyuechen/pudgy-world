@@ -18,7 +18,7 @@ const TEXTURE_BASENAME_REMAP = {
 
 /**
  * FBXLoader resolves material textures relative to the .fbx path (e.g.
- * /assets/models/asset-list/TheBerg_ColorAtlas.png). Remap those to the
+ * /assets/models/neighborhoods/TheBerg_ColorAtlas.png). Remap those to the
  * actual atlas files so LoadingManager does not 404.
  */
 export function remapFbxTextureUrl(url) {

@@ -27,9 +27,13 @@ function cameraViewFromObject(object) {
 }
 
 /**
- * Single Asset_List entry as its own explore scene (model at origin).
+ * Single placement as its own scene (model at origin).
+ * Individuals are playable; Extras stay explore-only.
  */
-export async function buildNeighborhoodScene(placement, { loadingManager, onProgress } = {}) {
+export async function buildNeighborhoodScene(
+  placement,
+  { loadingManager, onProgress, playable = true } = {},
+) {
   const scene = new THREE.Scene();
   scene.name = placement.name;
   scene.background = new THREE.Color(0x7ad8ef);
@@ -43,9 +47,9 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
   const fbxLoader = new FBXLoader(loadingManager);
   const root = await fbxLoader.loadAsync(assetUrl(placement.url));
   root.name = placement.name;
-  prepareFbxRoot(root, { ...materials, castShadow: true });
+  prepareFbxRoot(root, { ...materials, castShadow: playable });
 
-  // Show this neighborhood alone at origin (ignore Asset_List world offset).
+  // Show this entry alone at origin (ignore catalog world offset).
   const wrapper = new THREE.Group();
   wrapper.name = `${placement.name}_View`;
   wrapper.quaternion.set(
@@ -61,7 +65,7 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
   const cameraView = cameraViewFromObject(wrapper);
   const lights = createLights(scene, {
     target: cameraView.lookAt,
-    castShadow: true,
+    castShadow: playable,
     sunDistance: Math.max(80, cameraView.orbitDistance),
   });
 
@@ -72,9 +76,9 @@ export async function buildNeighborhoodScene(placement, { loadingManager, onProg
     lights,
     root: wrapper,
     cameraView,
-    playable: true,
-    collisionRoot: wrapper,
-    spawn: { x: 0, y: 20, z: 0 },
+    playable,
+    collisionRoot: playable ? wrapper : null,
+    spawn: playable ? { x: 0, y: 20, z: 0 } : undefined,
     update() {},
   };
 }
