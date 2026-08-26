@@ -80,30 +80,19 @@ RegistryManager → TraitRegistry 查特质预制体
 
 | | Unity | Web |
 |--|-------|-----|
-| 脚本 | `UnrestrictedMovementState` + `PlayerMovement` | `src/player/playerController.js` |
-| 物理 | `PredictedRigidbody` | 根节点运动学位移 + 网格向下射线 |
+| 脚本 | `UnrestrictedMovementState` + `PlayerMovement` | `src/control/characterController.js` |
+| 物理 | `PredictedRigidbody` | Rapier CharacterController + capsule |
 | 行走 / 滑行 / 跳 | ✅ | ✅ |
 | 相机相对方向 | ✅ | ✅ |
-| 面向移动方向 | ✅（约 600°/s） | ✅（同常量） |
-| 墙体 / Capsule 碰撞 | Rigidbody 碰撞 | **无**（仅贴地） |
+| 面向移动方向 | ✅（约 600°/s） | ✅（`rotateSmooth`） |
+| 墙体 / Capsule 碰撞 | Rigidbody 碰撞 | Rapier trimesh + capsule |
 | 状态机多状态 | Unrestricted / Restricted / Fishing | 实质只有「自由移动」+ 钓鱼会话锁输入 |
 
-**关键常量（两边对齐）：**
+**关键常量：** 见 `src/config/playerConfig.js` 的 `CONTROL`（walk/run、gravity、jump 等）。
 
-| 参数 | 值 |
-|------|----|
-| `walkSpeed` | 2.5 |
-| `slideSpeed` | 5 |
-| `acceleration` | 15 |
-| `jumpForce` | 4 |
-| `horizontalDamping` | 10 |
-| `rotationSpeed` | 600 °/s |
-| `gravity` | -9.81（Web） |
-| 接地短射线 | start 0.01 / range 0.05 |
+> Unity 另有 `MovementProfile` SO（Speed=5 等），**未被移动状态引用**；Web 以 `CONTROL` 为准。
 
-> Unity 另有 `MovementProfile` SO（Speed=5 等），**未被移动状态引用**；实装以 State 序列化字段为准。
-
-**映射：** `UnrestrictedMovementState` → `playerController.js` + `playerConfig.js`
+**映射：** `UnrestrictedMovementState` → `characterController.js` + `playerConfig.js`
 
 ---
 
@@ -111,13 +100,13 @@ RegistryManager → TraitRegistry 查特质预制体
 
 | | Unity | Web |
 |--|-------|-----|
-| 玩法相机 | `PlayerCamera`（跟随参考点、鼠标轨道） | `src/camera/playerCamera.js` |
+| 玩法相机 | `PlayerCamera`（跟随参考点、鼠标轨道） | `src/control/springArmCamera.js` |
 | 浏览相机 | （编辑器/调试） | `exploreCamera.js`（OrbitControls） |
-| Boom 距离 | 参考点最大距离约 3 | `cameraDistance` 3，可滚轮 3–90 |
-| 俯仰限制 | [-35°, 60°] | 同 |
-| 遮挡处理 | （视实现） | **无** |
+| Boom 距离 | 参考点最大距离约 3 | `CONTROL.camDefaultDistance`（可滚轮 min–max） |
+| 俯仰限制 | [-35°, 60°] | `CONTROL.pitchMin` / `pitchMax` |
+| 遮挡处理 | （视实现） | boom 射线 + sticky spring |
 
-**映射：** `PlayerCamera` → `playerCamera.js`；探索模式无 Unity 对等玩法脚本。
+**映射：** `PlayerCamera` → `springArmCamera.js`；探索模式无 Unity 对等玩法脚本。
 
 ---
 
@@ -125,7 +114,7 @@ RegistryManager → TraitRegistry 查特质预制体
 
 | | Unity | Web |
 |--|-------|-----|
-| 系统 | Input System → `InputEvents` | `src/input/playerInput.js` |
+| 系统 | Input System → `InputEvents` | `src/control/playerInput.js` |
 | 移动 / 滑行 / 跳 / 看 / 扔雪球 / 交互 / Return | ✅ | ✅（WASD、Shift、Space、F、点击、Esc 退钓鱼等） |
 | 手柄 / 键位重绑 | Input System | **无** |
 
@@ -297,16 +286,16 @@ Web 氛围 NPC ≠ Unity 完整任务 NPC。
 | Unity | Web |
 |-------|-----|
 | `Player` | `createPlayerSystem.js` + `loadPlayer.js` |
-| `UnrestrictedMovementState` | `playerController.js` |
+| `UnrestrictedMovementState` | `src/control/characterController.js` |
 | `RestrictedMovementState` / `FishingMovementState` | 钓鱼会话内锁移动（无完整状态机类） |
-| `PlayerCamera` | `playerCamera.js` |
+| `PlayerCamera` | `src/control/springArmCamera.js` |
 | `PlayerAnimator` | `playerAnimator.js` |
 | `PlayerInteract` | `createPlayerSystem` 交互 + `fishingHoles.js` |
 | `TraitEquipper` / `PlayerTrait` | `traitEquipper.js` |
 | `FishingHole` / Fishing steps | `fishingHoles.js`、`fishingSession.js`、`fishingConfig.js` |
 | `Fish` / `FishDefinition` | `fishConfig.js`、`catchPresenter.js` |
 | `Snowball` / `SnowballHitCounter` | `snowball.js`、`snowballHitCounter.js` |
-| InputEvents | `playerInput.js` |
+| InputEvents | `src/control/playerInput.js` |
 | Prediction* / PlayerManager / 网络事件 | — |
 | LevelLoader | `main.js` 场景加载 + Loading UI |
 | Editor 工具 | — |
@@ -372,6 +361,6 @@ Web 氛围 NPC ≠ Unity 完整任务 NPC。
 
 **Unity：** `Assets/Scripts/Objects/Player.cs`、`Components/Player/*`、`States/Movement States/*`、`Components/Interactables/*`、`Managers/*`、`Events/*`、`Data/Fishing/*`、`Scriptable Objects/Definitions/*`
 
-**Web：** `src/player/*`、`src/fishing/*`、`src/input/playerInput.js`、`src/camera/*`、`src/ui/*`、`src/npc/*`、`src/config/playerConfig.js`、`fishingConfig.js`、`traitsConfig.js`、`src/main.js`
+**Web：** `src/control/*`、`src/player/*`、`src/fishing/*`、`src/camera/exploreCamera.js`、`src/ui/*`、`src/npc/*`、`src/config/playerConfig.js`、`fishingConfig.js`、`traitsConfig.js`、`src/main.js`
 
 **资源：** [`docs/ASSETS.md`](./ASSETS.md)

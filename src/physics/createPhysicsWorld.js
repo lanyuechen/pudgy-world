@@ -57,7 +57,7 @@ function meshToWorldTrimesh(mesh, _v = new THREE.Vector3()) {
 
 /**
  * Rapier world + static scene colliders + kinematic player capsule + character controller.
- * Locomotion forces stay in playerController; Rapier resolves collisions like Unity PhysX.
+ * Locomotion forces stay in characterController; Rapier resolves collisions like Unity PhysX.
  */
 export function createPhysicsWorld() {
   const gravityY = PLAYER.gravity ?? -9.81;
@@ -69,9 +69,8 @@ export function createPhysicsWorld() {
   const characterController = world.createCharacterController(offset);
   characterController.setApplyImpulsesToDynamicBodies(false);
   characterController.setSlideEnabled(true);
-  // Rapier: max angle between floor normal and up (not slope-from-horizontal).
   characterController.setMaxSlopeClimbAngle(
-    Math.acos(THREE.MathUtils.clamp(PLAYER.wallSlopeLimit ?? 0.55, 0, 0.99)),
+    THREE.MathUtils.degToRad(PLAYER.maxSlopeAngle ?? 45),
   );
   characterController.enableAutostep(
     PLAYER.autostepMaxHeight ?? 0.55,
@@ -156,12 +155,19 @@ export function createPhysicsWorld() {
   }
 
   /**
-   * Move the capsule by desired world delta (from integrated velocity).
-   * Returns { x,y,z } actual movement and grounded flag.
+   * Move the capsule by desired world delta.
+   * @param {{ allowSnap?: boolean }} [opts] allowSnap false disables snap-to-ground (for jumps)
    */
-  function movePlayer(dx, dy, dz) {
+  function movePlayer(dx, dy, dz, opts = {}) {
     if (!playerCollider || !playerBody) {
       return { x: dx, y: dy, z: dz, grounded: false };
+    }
+
+    const allowSnap = opts.allowSnap !== false;
+    if (allowSnap) {
+      characterController.enableSnapToGround(PLAYER.characterSnapDist ?? 0.35);
+    } else {
+      characterController.disableSnapToGround();
     }
 
     characterController.computeColliderMovement(playerCollider, { x: dx, y: dy, z: dz });
@@ -172,8 +178,6 @@ export function createPhysicsWorld() {
     const next = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z };
     playerBody.setNextKinematicTranslation(next);
     world.step();
-    // Character controller movement is applied via setNextKinematicTranslation;
-    // step integrates kinematics. Sync translation for reads.
     const after = playerBody.translation();
     return {
       x: after.x - t.x,

@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { PLAYER } from '../config/playerConfig.js';
+import { PLAYER, CONTROL } from '../config/playerConfig.js';
 import { loadPlayerModel } from './loadPlayer.js';
-import { createPlayerController } from './playerController.js';
+import { createCharacterController } from '../control/characterController.js';
+import { createSpringArmCamera } from '../control/springArmCamera.js';
+import { createControlInput } from '../control/playerInput.js';
 import { createPlayerAnimator } from './playerAnimator.js';
 import { createSnowballSystem } from './snowball.js';
-import { createPlayerCamera } from '../camera/playerCamera.js';
-import { createPlayerInput } from '../input/playerInput.js';
 import { createSnowballHitCounter } from '../ui/snowballHitCounter.js';
 import { createFishingSession } from '../fishing/fishingSession.js';
 import { createFishingPrompt } from '../ui/fishingPrompt.js';
@@ -67,7 +67,8 @@ export async function createPlayerSystem({
   physics.addStaticMeshes(colliders);
   physics.createPlayerCapsule(spawn.x, spawn.y, spawn.z);
 
-  const controller = createPlayerController(playerRoot, { physics });
+  // docs: CharacterFixedTick + CameraLateUpdate (new control layer)
+  const controller = createCharacterController(playerRoot, { physics });
   if (!controller.snapToGroundIfNeeded()) {
     console.warn('[player] ground snap failed at', playerRoot.position.toArray());
     playerRoot.position.y = 1;
@@ -106,7 +107,8 @@ export async function createPlayerSystem({
   }
 
   const slideFx = createSlideFx(scene, playerRoot, slideFxTexture);
-  const playerCamera = createPlayerCamera(camera);
+  const playerCamera = createSpringArmCamera(camera);
+  playerCamera.setObstacles(colliders);
   playerCamera.bind(playerRoot);
   const handBone = findHandBone(playerRoot);
   const hitCounter = createSnowballHitCounter();
@@ -146,8 +148,26 @@ export async function createPlayerSystem({
     onExit: () => endFishing(),
   });
 
-  const input = createPlayerInput(canvas);
+  const input = createControlInput(canvas);
   let throwCooldown = 0;
+  let logicAccum = 0;
+  /** Space edge latched until one jump attempt is made (or timeout). */
+  let pendingJump = false;
+  let pendingJumpAge = 0;
+  let lastStatus = {
+    grounded: true,
+    moving: false,
+    turning: false,
+    sliding: false,
+    jumpStarted: false,
+    velocity: new THREE.Vector3(),
+    facingYawDeg: 0,
+  };
+
+  function setInputLocked(locked) {
+    input.setUiOpen(locked);
+    playerCamera.setUiOpen(locked);
+  }
 
   async function presentCatchAndFinish() {
     traitEquipper.unequipFishingSet();
@@ -169,6 +189,7 @@ export async function createPlayerSystem({
     window.clearTimeout(catchDismissTimer);
     catchDismissTimer = 0;
     fishingBusy = false;
+    setInputLocked(false);
     catchPresenter.dismiss();
     traitEquipper.unequipFishingSet();
     if (fishingSession.active) fishingSession.exit();
@@ -178,6 +199,7 @@ export async function createPlayerSystem({
 
   function beginFishing(hole) {
     fishingBusy = true;
+    setInputLocked(true);
     traitEquipper.equipFishingSet();
     animator.enterFishing();
     fishingSession.start(hole.id);
@@ -223,6 +245,7 @@ export async function createPlayerSystem({
 
   function update(dt) {
     const frame = input.consume();
+    const fixedDt = CONTROL.fixedDt;
 
     if (!fishingBusy && !fishingSession.active && frame.interactClick) {
       tryInteract(frame);
@@ -244,14 +267,9 @@ export async function createPlayerSystem({
         );
       }
 
-      playerCamera.applyLook(dt, frame, {});
       animator.update(dt, { fishingMode: true });
-      playerCamera.follow(dt);
+      playerCamera.lateUpdate(dt, frame, {});
       return;
-    }
-
-    if (frame.returnPressed) {
-      // unrestricted — no-op
     }
 
     let throwStarted = false;
@@ -262,19 +280,46 @@ export async function createPlayerSystem({
     }
     throwCooldown = Math.max(0, throwCooldown - dt);
 
-    const status = controller.update(
-      dt,
-      frame,
-      playerCamera.getForward(),
-      playerCamera.getRight(),
-    );
-    status.throwStarted = throwStarted;
+    // Jump: latch Space edge → try once on next grounded tick (≤0.2s).
+    if (frame.jump) {
+      pendingJump = true;
+      pendingJumpAge = 0;
+    }
+    if (pendingJump) {
+      pendingJumpAge += dt;
+      if (pendingJumpAge > 0.2) pendingJump = false;
+    }
 
-    playerCamera.applyLook(dt, frame, status);
+    logicAccum += Math.min(dt, 0.1);
+    let status = lastStatus;
+    let jumpedThisFrame = false;
+    let steps = 0;
+    while (logicAccum >= fixedDt && steps < 5) {
+      status = controller.fixedTick(
+        fixedDt,
+        { ...frame, jump: pendingJump },
+        playerCamera.getYawRad(),
+        { uiOpen: frame.uiOpen },
+      );
+      if (status.jumpStarted) {
+        pendingJump = false;
+        jumpedThisFrame = true;
+      }
+      logicAccum -= fixedDt;
+      steps += 1;
+    }
+    status = {
+      ...status,
+      jumpStarted: jumpedThisFrame,
+      throwStarted,
+      sliding: !!(status.moving && frame.run),
+    };
+    lastStatus = status;
+
     animator.update(dt, status);
     slideFx.update(dt, status);
     snowballs.update(dt);
-    playerCamera.follow(dt);
+    playerCamera.lateUpdate(dt, frame, status);
 
     if (fishingHoles) {
       const inRange = fishingHoles.updateRange(playerRoot);
@@ -305,6 +350,7 @@ export async function createPlayerSystem({
     hitCounter,
     fishingSession,
     traitEquipper,
+    setInputLocked,
     update,
     dispose,
   };
