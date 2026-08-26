@@ -47,6 +47,8 @@ export function createFishingHoles(scene, { holes = FISHING.holes } = {}) {
     mesh.receiveShadow = true;
     mesh.renderOrder = 2;
     mesh.userData.fishingHole = true;
+    mesh.userData.isFishingHole = true;
+    mesh.userData.skipCollision = true;
     root.add(mesh);
 
     group.add(root);

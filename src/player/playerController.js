@@ -2,55 +2,75 @@ import * as THREE from 'three';
 import { PLAYER } from '../config/playerConfig.js';
 
 /**
- * Camera-relative locomotion matching UnrestrictedMovementState + Rigidbody:
- *
- *   targetVel = moveDir * moveSpeed
- *   v += targetVel * acceleration * dt          // AddForce Force, mass 1
- *   if jump && grounded: v.y += jumpForce        // Impulse
- *   v.xz -= v.xz * horizontalDamping * dt
- *   if |v.xz| > moveSpeed: v.xz = targetVel.xz   // snap, not magnitude clamp
- *   v.y += gravity * dt
- *
- * Airborne keeps last grounded moveSpeed (Unity state.moveSpeed).
+ * Camera-relative locomotion matching UnrestrictedMovementState + Rigidbody.
+ * Horizontal/vertical displacement is resolved by Rapier CharacterController
+ * (capsule vs static scene trimeshes), similar to Unity PhysX.
  */
-export function createPlayerController(playerRoot, { colliders = [] } = {}) {
+export function createPlayerController(playerRoot, { physics } = {}) {
   const velocity = new THREE.Vector3();
   let grounded = false;
   let facing = 0;
   let moveSpeed = PLAYER.walkSpeed;
 
-  const down = new THREE.Vector3(0, -1, 0);
-  const raycaster = new THREE.Raycaster();
-  const _origin = new THREE.Vector3();
   const _move = new THREE.Vector3();
   const _targetVel = new THREE.Vector3();
   const _horizontal = new THREE.Vector3();
+  const _feet = { x: 0, y: 0, z: 0 };
+  const wallSlopeLimit = PLAYER.wallSlopeLimit ?? 0.55;
 
-  function setColliders(meshes) {
-    colliders = meshes;
+  function syncRootFromPhysics() {
+    if (!physics) return;
+    physics.getPlayerFeetPosition(_feet);
+    playerRoot.position.set(_feet.x, _feet.y, _feet.z);
   }
 
-  function raycastGround(fromY, maxDist) {
-    _origin.set(playerRoot.position.x, fromY, playerRoot.position.z);
-    raycaster.set(_origin, down);
-    raycaster.far = maxDist;
-    const hits = raycaster.intersectObjects(colliders, false);
-    return hits[0] ?? null;
+  function syncPhysicsFromRoot() {
+    if (!physics) return;
+    const p = playerRoot.position;
+    physics.setPlayerFeetPosition(p.x, p.y, p.z);
   }
 
-  /** Unity IsGrounded: short ray from feet. */
+  /** Unity IsGrounded: short downward cast from capsule. */
   function unityGrounded() {
-    const hit = raycastGround(
-      playerRoot.position.y + PLAYER.groundRayStartHeight,
-      PLAYER.groundRayRange,
-    );
-    return !!hit;
+    if (!physics) return false;
+    const hit = physics.castGround(PLAYER.centerY + PLAYER.groundRayRange + 0.05);
+    if (!hit) return false;
+    // Capsule center → ground distance ≈ centerY when standing on surface
+    const feetClearance = hit.toi - PLAYER.centerY;
+    return feetClearance <= PLAYER.groundRayStartHeight + PLAYER.groundRayRange + 0.02;
+  }
+
+  /**
+   * Remove only the velocity component into wall contacts (keep tangential speed
+   * so walk anim / slide-along-wall stay responsive). Do not scale by moved/desired
+   * ratio — that crushed speed on steps and killed locomotion clips.
+   */
+  function applyWallVelocityResponse() {
+    const cc = physics?.characterController;
+    if (!cc) return;
+    const n = cc.numComputedCollisions();
+    for (let i = 0; i < n; i += 1) {
+      const col = cc.computedCollision(i);
+      const normal = col?.normal1;
+      if (!normal) continue;
+      // Floors / ceilings — leave vertical to grounded / gravity handling.
+      if (Math.abs(normal.y) >= wallSlopeLimit) continue;
+      const vn = velocity.x * normal.x + velocity.z * normal.z;
+      if (vn < 0) {
+        velocity.x -= normal.x * vn;
+        velocity.z -= normal.z * vn;
+      }
+    }
   }
 
   function snapToGroundIfNeeded() {
-    const hit = raycastGround(playerRoot.position.y + 100, 300);
+    if (!physics) return false;
+    syncPhysicsFromRoot();
+    const hit = physics.castGround(300);
     if (!hit) return false;
-    playerRoot.position.y = hit.point.y + PLAYER.skinWidth;
+    const feetY = hit.pointY + PLAYER.skinWidth;
+    playerRoot.position.y = feetY;
+    physics.setPlayerFeetPosition(playerRoot.position.x, feetY, playerRoot.position.z);
     velocity.set(0, 0, 0);
     grounded = true;
     moveSpeed = PLAYER.walkSpeed;
@@ -58,18 +78,11 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
   }
 
   function update(dt, input, cameraForward, cameraRight) {
-    // --- Ground state (probe + Unity short ray) ---
-    const probe = raycastGround(
-      playerRoot.position.y + PLAYER.centerY,
-      PLAYER.centerY + PLAYER.groundSnapProbe,
-    );
-    const nearGround =
-      !!probe &&
-      playerRoot.position.y <= probe.point.y + PLAYER.skinWidth + 0.08 &&
-      velocity.y <= 0.05;
-    grounded = nearGround || unityGrounded();
+    syncPhysicsFromRoot();
 
-    // --- Speed (Unity: airborne keeps state.moveSpeed) ---
+    // --- Ground state (cast; refined after Rapier move) ---
+    grounded = unityGrounded();
+
     if (grounded) {
       moveSpeed = input.slide ? PLAYER.slideSpeed : PLAYER.walkSpeed;
     }
@@ -116,46 +129,59 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
 
     _horizontal.set(velocity.x, 0, velocity.z);
     if (_horizontal.length() > moveSpeed) {
-      // Unity: snap to targetVelocity xz (not magnitude clamp)
       velocity.x = _targetVel.x;
       velocity.z = _targetVel.z;
     }
 
-    velocity.y += PLAYER.gravity * dt;
-
-    playerRoot.position.x += velocity.x * dt;
-    playerRoot.position.y += velocity.y * dt;
-    playerRoot.position.z += velocity.z * dt;
-
-    // --- Land / stick ---
-    const landHit = raycastGround(
-      playerRoot.position.y + PLAYER.centerY,
-      PLAYER.centerY + PLAYER.groundSnapProbe,
-    );
-    if (
-      landHit &&
-      velocity.y <= 0 &&
-      playerRoot.position.y <= landHit.point.y + PLAYER.skinWidth + 0.05
-    ) {
-      playerRoot.position.y = landHit.point.y + PLAYER.skinWidth;
+    // Critical for Rapier autostep: do not push into the floor every frame while
+    // grounded — a constant downward delta cancels step-up on low obstacles.
+    if (grounded && !jumpStarted && velocity.y <= 0) {
       velocity.y = 0;
-      grounded = true;
-    } else if (!unityGrounded() && !(landHit && playerRoot.position.y <= landHit.point.y + 0.1)) {
-      grounded = false;
+    } else {
+      velocity.y += PLAYER.gravity * dt;
+    }
+
+    const dx = velocity.x * dt;
+    const dy = velocity.y * dt;
+    const dz = velocity.z * dt;
+
+    if (physics) {
+      const moved = physics.movePlayer(dx, dy, dz);
+      syncRootFromPhysics();
+      grounded = moved.grounded || unityGrounded();
+
+      if (grounded && velocity.y < 0) {
+        velocity.y = 0;
+      }
+
+      applyWallVelocityResponse();
+    } else {
+      playerRoot.position.x += dx;
+      playerRoot.position.y += dy;
+      playerRoot.position.z += dz;
     }
 
     if (playerRoot.position.y < -40) {
       playerRoot.position.set(PLAYER.spawn.x, PLAYER.spawn.y, PLAYER.spawn.z);
       velocity.set(0, 0, 0);
+      if (physics) {
+        physics.createPlayerCapsule(
+          playerRoot.position.x,
+          playerRoot.position.y,
+          playerRoot.position.z,
+        );
+      }
       snapToGroundIfNeeded();
     }
 
-    const moving = _horizontal.set(velocity.x, 0, velocity.z).length() >= 1; // Unity _movingThreshold
+    // Input intent keeps walk playing while pressing into / stepping onto props;
+    // velocity threshold matches prior locomotion (was crushed by moved/desired ratio).
+    const speedH = _horizontal.set(velocity.x, 0, velocity.z).length();
+    const moving = _move.lengthSq() > 1e-4 ? speedH >= 0.35 : speedH >= 1;
     return {
       grounded,
       moving,
       turning,
-      // Unity: isSliding = grounded && slidePressed (no move required)
       sliding: grounded && !!input.slide,
       jumpStarted,
       velocity: velocity.clone(),
@@ -165,7 +191,6 @@ export function createPlayerController(playerRoot, { colliders = [] } = {}) {
 
   return {
     update,
-    setColliders,
     snapToGroundIfNeeded,
     get grounded() {
       return grounded;

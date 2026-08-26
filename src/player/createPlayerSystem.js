@@ -16,11 +16,16 @@ import { loadSavedCosmeticTraitLoadout } from '../config/traitPersistence.js';
 import { TRAIT_TYPE } from '../config/traitsConfig.js';
 import { FISHING } from '../config/fishingConfig.js';
 import { CATCH_HOLD_DURATION } from '../config/fishConfig.js';
+import { initRapier, createPhysicsWorld } from '../physics/createPhysicsWorld.js';
 
 function collectColliders(root) {
   const meshes = [];
   root?.traverse((child) => {
-    if (child.isMesh) meshes.push(child);
+    if (!child.isMesh) return;
+    // Hull outlines / FX should not block the player.
+    if (child.userData?.isHullOutlineMesh || child.userData?.skipCollision) return;
+    if (child.userData?.isSnowball || child.userData?.isFishingHole) return;
+    meshes.push(child);
   });
   return meshes;
 }
@@ -54,11 +59,19 @@ export async function createPlayerSystem({
   playerRoot.position.set(spawn.x, spawn.y, spawn.z);
   scene.add(playerRoot);
 
+  // Three.js meshes: snowballs / fishing align. Rapier: player locomotion.
   const colliders = collectColliders(collisionRoot);
-  const controller = createPlayerController(playerRoot, { colliders });
+
+  await initRapier();
+  const physics = createPhysicsWorld();
+  physics.addStaticMeshes(colliders);
+  physics.createPlayerCapsule(spawn.x, spawn.y, spawn.z);
+
+  const controller = createPlayerController(playerRoot, { physics });
   if (!controller.snapToGroundIfNeeded()) {
     console.warn('[player] ground snap failed at', playerRoot.position.toArray());
     playerRoot.position.y = 1;
+    physics.setPlayerFeetPosition(playerRoot.position.x, 1, playerRoot.position.z);
   }
 
   if (fishingHoles) {
@@ -277,6 +290,7 @@ export async function createPlayerSystem({
     slideFx.dispose();
     catchPresenter.dispose();
     traitEquipper.dispose();
+    physics.dispose();
     hitCounter.setVisible(false);
     fishingPrompt.hide();
     scene.remove(playerRoot);
@@ -285,6 +299,7 @@ export async function createPlayerSystem({
   return {
     playerRoot,
     controller,
+    physics,
     playerCamera,
     animator,
     hitCounter,

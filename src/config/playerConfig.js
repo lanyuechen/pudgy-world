@@ -7,10 +7,23 @@ export const PLAYER = {
   fbx: assetUrl('/assets/models/player/player_pudgy.fbx'),
   traitsAtlas: assetUrl('/assets/textures/Traits_ColorAtlas.png'),
 
-  // CapsuleCollider
+  // CapsuleCollider (Unity) → Rapier capsule (halfHeight = (height - 2*radius)/2)
   radius: 0.4,
   height: 1.5,
   centerY: 0.75,
+
+  /** CharacterController skin (Rapier offset). */
+  collisionSkin: 0.02,
+  /** Cosine threshold: |normal.y| below this ⇒ wall (max slope climb). */
+  wallSlopeLimit: 0.55,
+  /** Max height of low obstacles the capsule can step onto (meters). */
+  autostepMaxHeight: 0.55,
+  /** Min flat depth required after a step (meters). */
+  autostepMinWidth: 0.2,
+  /** Snap-to-ground distance for Rapier CC (keep modest so steps work). */
+  characterSnapDist: 0.35,
+  /** Skip scene meshes with more verts than this when baking trimeshes. */
+  rapierMaxMeshVerts: 200_000,
 
   // UnrestrictedMovementState
   walkSpeed: 2.5,
