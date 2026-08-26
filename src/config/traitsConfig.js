@@ -55,13 +55,13 @@ export const DEFAULT_TRAIT_LOADOUT = {
   [TRAIT_TYPE.FullBody]: null,
 };
 
-/** Traits shown in the customization panel (excludes fishing gear). */
+/** Traits shown in the skin panel (excludes fishing gear). */
 export const COSMETIC_TRAIT_TYPES = [
+  TRAIT_TYPE.FullBody,
   TRAIT_TYPE.Skin,
   TRAIT_TYPE.Head,
   TRAIT_TYPE.Face,
   TRAIT_TYPE.Body,
-  TRAIT_TYPE.FullBody,
 ];
 
 export function traitsForType(type) {
@@ -69,10 +69,10 @@ export function traitsForType(type) {
 }
 
 export const TRAIT_TYPE_LABELS = {
-  [TRAIT_TYPE.Skin]: 'Skin',
-  [TRAIT_TYPE.Head]: 'Head',
-  [TRAIT_TYPE.Face]: 'Face',
-  [TRAIT_TYPE.Body]: 'Body',
-  [TRAIT_TYPE.FullBody]: 'Full Body',
-  [TRAIT_TYPE.Bait]: 'Bait',
+  [TRAIT_TYPE.Skin]: '皮肤',
+  [TRAIT_TYPE.Head]: '头',
+  [TRAIT_TYPE.Face]: '脸',
+  [TRAIT_TYPE.Body]: '身体',
+  [TRAIT_TYPE.FullBody]: '套装',
+  [TRAIT_TYPE.Bait]: '鱼饵',
 };

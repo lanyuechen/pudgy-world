@@ -169,6 +169,46 @@ export async function createPlayerSystem({
     playerCamera.setUiOpen(locked);
   }
 
+  /**
+   * Config panel camera / move lock.
+   * @param {null | 'skin' | 'scene' | 'showcase' | 'controls'} mode
+   * @param {{ box?: import('three').Box3 }} [opts]
+   */
+  function setConfigMode(mode, opts = {}) {
+    if (mode === 'skin') {
+      input.setMoveLocked(true);
+      input.setLookLocked(false);
+      playerCamera.setUiOpen(false);
+      playerCamera.enterSkinPreview();
+      return;
+    }
+    if (mode === 'controls') {
+      input.setMoveLocked(false);
+      input.setLookLocked(false);
+      playerCamera.setUiOpen(false);
+      playerCamera.enterSkinPreview();
+      return;
+    }
+    if (mode === 'scene') {
+      input.setMoveLocked(true);
+      input.setLookLocked(false);
+      playerCamera.setUiOpen(false);
+      if (opts.box) playerCamera.enterScenePreview(opts.box);
+      return;
+    }
+    if (mode === 'showcase') {
+      input.setMoveLocked(true);
+      input.setLookLocked(true);
+      playerCamera.setUiOpen(false);
+      playerCamera.exitConfigPreview();
+      return;
+    }
+    input.setMoveLocked(false);
+    input.setLookLocked(false);
+    playerCamera.setUiOpen(false);
+    playerCamera.exitConfigPreview();
+  }
+
   async function presentCatchAndFinish() {
     traitEquipper.unequipFishingSet();
     const duration = CATCH_HOLD_DURATION ?? FISHING.catchPoseHold ?? 2.4;
@@ -351,6 +391,7 @@ export async function createPlayerSystem({
     fishingSession,
     traitEquipper,
     setInputLocked,
+    setConfigMode,
     update,
     dispose,
   };

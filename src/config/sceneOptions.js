@@ -172,6 +172,10 @@ export function getSceneOptions() {
   return {
     groups,
     flat: groups.flatMap((g) => g.options),
+    /** Playable town islands — used by the 场景 card grid. */
+    individuals,
+    /** Everything except individuals — used by the 其他 dropdown. */
+    otherGroups: groups.filter((g) => g.id !== 'individuals'),
   };
 }
 

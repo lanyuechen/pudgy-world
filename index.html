@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,11 +8,11 @@
   <body>
     <div id="app">
       <canvas id="c"></canvas>
-      <button type="button" id="intro-skip" hidden>Skip Intro</button>
+      <button type="button" id="intro-skip" hidden>跳过开场</button>
       <div id="loading">
         <div class="panel">
           <p class="title">Pudgy World</p>
-          <p class="status" id="loading-status">Loading…</p>
+          <p class="status" id="loading-status">加载中…</p>
           <div class="bar"><div id="loading-bar"></div></div>
         </div>
       </div>
@@ -20,25 +20,117 @@
         <button
           type="button"
           id="config-toggle"
-          aria-label="Open settings"
+          aria-label="打开设置"
           aria-expanded="false"
           aria-controls="config-panel"
         >
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <svg
+            class="config-toggle-icon config-toggle-icon--open"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            aria-hidden="true"
+          >
             <path
               fill="currentColor"
               d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.1 7.1 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.6.24-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.22l2.39-.96c.49.39 1.03.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.6-.24 1.14-.55 1.63-.94l2.39.96c.25.12.54.02.68-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"
             />
           </svg>
+          <svg
+            class="config-toggle-icon config-toggle-icon--close"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            aria-hidden="true"
+          >
+            <path
+              fill="currentColor"
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+            />
+          </svg>
         </button>
-        <div id="config-panel" role="dialog" aria-label="Settings" hidden>
-          <p class="config-title">Settings</p>
-          <label class="config-field" for="scene-select">
-            <span class="label">Scene</span>
-            <select id="scene-select" aria-label="Select scene"></select>
-          </label>
-          <div id="traits-panel" class="config-section"></div>
-          <div id="hint">WASD move · Shift slide · Space jump · F throw · Click fish · Hold drag look · Scroll zoom</div>
+        <div id="config-panel" role="dialog" aria-label="设置" hidden>
+          <div class="config-shell">
+            <div class="config-column">
+              <nav class="config-nav" aria-label="设置分类">
+                <button
+                  type="button"
+                  class="config-nav-btn is-active"
+                  data-tab="scene"
+                  aria-pressed="true"
+                  aria-label="场景"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM10 5.47l4 1.4v11.66l-4-1.4V5.47z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
+                  data-tab="skin"
+                  aria-pressed="false"
+                  id="config-tab-skin"
+                  aria-label="皮肤"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-3.87-.78-5.25-2.05.47-.74 1.26-1.23 2.16-1.23h6.18c.9 0 1.69.49 2.16 1.23A8.003 8.003 0 0112 20z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
+                  data-tab="showcase"
+                  aria-pressed="false"
+                  aria-label="橱窗"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M21 9V7l-2-2H5L3 7v2h18zm0 2H3v10h18V11zM7 13h2v5H7v-5zm4 0h2v5h-2v-5z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
+                  data-tab="controls"
+                  aria-pressed="false"
+                  aria-label="操作"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"
+                    />
+                  </svg>
+                </button>
+              </nav>
+              <div class="config-body">
+                <div id="config-pane-scene" class="config-pane" data-pane="scene">
+                  <div id="scene-panel" class="config-section-panel"></div>
+                </div>
+                <div id="config-pane-skin" class="config-pane" data-pane="skin" hidden>
+                  <div id="traits-panel" class="config-section-panel"></div>
+                </div>
+                <div id="config-pane-showcase" class="config-pane" data-pane="showcase" hidden>
+                  <div id="showcase-panel" class="config-section-panel"></div>
+                </div>
+                <div id="config-pane-controls" class="config-pane" data-pane="controls" hidden>
+                  <p class="config-section-title">操作指导</p>
+                  <div id="hint" class="controls-guide">WASD 移动 · Shift 奔跑 · Space 跳跃 · F 扔雪球 · 点击钓鱼 · 拖拽视角 · 滚轮缩放</div>
+                </div>
+              </div>
+            </div>
+            <div class="showcase-viewport" id="showcase-viewport" aria-hidden="true">
+              <canvas id="showcase-canvas" aria-label="橱窗预览"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>

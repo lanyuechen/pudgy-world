@@ -1,12 +1,14 @@
 /**
  * Input layer — docs §3.2
  * WASD move · Shift run · Space jump · LMB drag look · wheel zoom
- * UIOpen freezes everything.
+ * Fishing: setUiOpen locks everything.
+ * Config panel: setMoveLocked / setLookLocked independently.
  */
 
 export function createControlInput(domElement) {
   const keys = new Set();
-  let uiOpen = false;
+  let moveLocked = false;
+  let lookLocked = false;
 
   let moveX = 0;
   let moveY = 0;
@@ -39,7 +41,7 @@ export function createControlInput(domElement) {
   }
 
   function refreshMove() {
-    if (uiOpen) {
+    if (moveLocked) {
       moveX = 0;
       moveY = 0;
       return;
@@ -60,33 +62,57 @@ export function createControlInput(domElement) {
     }
   }
 
+  function clearLookState() {
+    rotateCamera = false;
+    lookAccumX = 0;
+    lookAccumY = 0;
+    zoomAccum = 0;
+    pointerDown = false;
+  }
+
+  /** Full freeze (fishing / legacy UI). */
   function setUiOpen(v) {
-    uiOpen = !!v;
-    if (uiOpen) {
+    const on = !!v;
+    moveLocked = on;
+    lookLocked = on;
+    if (on) {
       moveX = 0;
       moveY = 0;
       jumpPressed = false;
       runHeld = false;
-      rotateCamera = false;
-      lookAccumX = 0;
-      lookAccumY = 0;
-      zoomAccum = 0;
-      pointerDown = false;
+      clearLookState();
     } else {
       refreshMove();
     }
+  }
+
+  function setMoveLocked(v) {
+    moveLocked = !!v;
+    if (moveLocked) {
+      moveX = 0;
+      moveY = 0;
+      jumpPressed = false;
+      runHeld = false;
+    } else {
+      refreshMove();
+    }
+  }
+
+  function setLookLocked(v) {
+    lookLocked = !!v;
+    if (lookLocked) clearLookState();
   }
 
   function onKeyDown(e) {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
       e.preventDefault();
     }
-    if (uiOpen) return;
+    if (e.code === 'Escape' && !e.repeat) returnPressed = true;
+    if (moveLocked) return;
     if (e.code === 'Space') {
       if (!e.repeat) jumpPressed = true;
     }
     if (e.code === 'KeyF' && !e.repeat) throwRequested = true;
-    if (e.code === 'Escape' && !e.repeat) returnPressed = true;
     keys.add(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') runHeld = true;
     refreshMove();
@@ -95,13 +121,13 @@ export function createControlInput(domElement) {
   function onKeyUp(e) {
     keys.delete(e.code);
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-      runHeld = !uiOpen && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
+      runHeld = !moveLocked && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
     }
     refreshMove();
   }
 
   function onPointerDown(e) {
-    if (e.button !== 0 || e.target !== domElement || uiOpen) return;
+    if (e.button !== 0 || e.target !== domElement || lookLocked) return;
     pointerDown = true;
     pointerDownX = e.clientX;
     pointerDownY = e.clientY;
@@ -115,7 +141,7 @@ export function createControlInput(domElement) {
     if (e.button !== 0) return;
     const dragged =
       pointerDragged || Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4;
-    if (!uiOpen && pointerDown && !dragged && e.target === domElement) {
+    if (!moveLocked && !lookLocked && pointerDown && !dragged && e.target === domElement) {
       interactClick = { clientX: e.clientX, clientY: e.clientY };
     }
     pointerDown = false;
@@ -129,7 +155,7 @@ export function createControlInput(domElement) {
   }
 
   function onPointerMove(e) {
-    if (uiOpen) return;
+    if (lookLocked) return;
     updatePointerNorm(e.clientX, e.clientY);
     if (!pointerDown || (e.buttons & 1) === 0) return;
     if (Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4) {
@@ -148,7 +174,7 @@ export function createControlInput(domElement) {
 
   function onWheel(e) {
     e.preventDefault();
-    if (!uiOpen) zoomAccum += e.deltaY;
+    if (!lookLocked) zoomAccum += e.deltaY;
   }
 
   function onBlur() {
@@ -173,23 +199,26 @@ export function createControlInput(domElement) {
   domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
   function consume() {
+    const uiOpen = moveLocked && lookLocked;
     const frame = {
-      moveX: uiOpen ? 0 : moveX,
-      moveY: uiOpen ? 0 : moveY,
-      lookX: uiOpen ? 0 : lookAccumX,
-      lookY: uiOpen ? 0 : lookAccumY,
-      zoomDelta: uiOpen ? 0 : zoomAccum,
-      jump: !uiOpen && jumpPressed,
-      run: !uiOpen && runHeld,
-      slide: !uiOpen && runHeld,
-      rotateCamera: !uiOpen && rotateCamera,
-      pointerNX: uiOpen ? 0 : pointerNX,
-      pointerNY: uiOpen ? 0 : pointerNY,
-      throwSnowball: !uiOpen && throwRequested,
+      moveX: moveLocked ? 0 : moveX,
+      moveY: moveLocked ? 0 : moveY,
+      lookX: lookLocked ? 0 : lookAccumX,
+      lookY: lookLocked ? 0 : lookAccumY,
+      zoomDelta: lookLocked ? 0 : zoomAccum,
+      jump: !moveLocked && jumpPressed,
+      run: !moveLocked && runHeld,
+      slide: !moveLocked && runHeld,
+      rotateCamera: !lookLocked && rotateCamera,
+      pointerNX: lookLocked ? 0 : pointerNX,
+      pointerNY: lookLocked ? 0 : pointerNY,
+      throwSnowball: !moveLocked && throwRequested,
       returnPressed,
-      interactClick: uiOpen ? null : interactClick,
-      locked: uiOpen,
+      interactClick: moveLocked || lookLocked ? null : interactClick,
+      locked: moveLocked,
       uiOpen,
+      moveLocked,
+      lookLocked,
     };
     lookAccumX = 0;
     lookAccumY = 0;
@@ -215,9 +244,17 @@ export function createControlInput(domElement) {
   return {
     consume,
     setUiOpen,
+    setMoveLocked,
+    setLookLocked,
     dispose,
     get uiOpen() {
-      return uiOpen;
+      return moveLocked && lookLocked;
+    },
+    get moveLocked() {
+      return moveLocked;
+    },
+    get lookLocked() {
+      return lookLocked;
     },
   };
 }

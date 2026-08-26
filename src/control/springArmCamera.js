@@ -3,7 +3,7 @@ import { CONTROL } from '../config/playerConfig.js';
 
 /**
  * Spring-arm camera — docs §4 / §6.2
- * Slow boom pull / spring-back / smoothDamp; auto-yaw follows character while moving.
+ * Config modes: skin (front + right-half bias, look free) / scene (bounds orbit, look locked by input).
  */
 export function createSpringArmCamera(camera) {
   let yaw = 0;
@@ -12,12 +12,21 @@ export function createSpringArmCamera(camera) {
   let realDistance = targetDistance;
   let boomSticky = null;
   let uiOpen = false;
+  /** @type {null | 'skin' | 'scene'} */
+  let configMode = null;
   let softYaw = 0;
   let softPitch = 0;
   /** @type {THREE.Object3D|null} */
   let character = null;
   /** @type {THREE.Object3D[]} */
   let obstacles = [];
+
+  /** @type {null | { yaw:number, pitch:number, targetDistance:number, realDistance:number, softYaw:number, softPitch:number }} */
+  let savedPlayView = null;
+
+  const sceneTarget = new THREE.Vector3();
+  const skinFocus = new THREE.Vector3();
+  const _size = new THREE.Vector3();
 
   const _pivot = new THREE.Vector3();
   const _pivotSmooth = new THREE.Vector3();
@@ -28,6 +37,10 @@ export function createSpringArmCamera(camera) {
   const _euler = new THREE.Euler(0, 0, 0, 'YXZ');
   const raycaster = new THREE.Raycaster();
   let pivotReady = false;
+  let rightHalfProjection = false;
+
+  /** Fraction of vertical FOV the character should fill in skin preview */
+  const SKIN_FILL_Y = 0.85;
 
   function setObstacles(meshes) {
     obstacles = meshes ?? [];
@@ -46,6 +59,8 @@ export function createSpringArmCamera(camera) {
     boomSticky = null;
     _vel.set(0, 0, 0);
     pivotReady = false;
+    configMode = null;
+    savedPlayView = null;
     lateUpdate(1 / 60, { lookX: 0, lookY: 0, zoomDelta: 0, rotateCamera: false }, {});
   }
 
@@ -55,6 +70,131 @@ export function createSpringArmCamera(camera) {
 
   function getYawDeg() {
     return yaw;
+  }
+
+  function capturePlayView() {
+    return {
+      yaw,
+      pitch,
+      targetDistance,
+      realDistance,
+      softYaw,
+      softPitch,
+    };
+  }
+
+  function restorePlayView(snap) {
+    if (!snap) return;
+    yaw = snap.yaw;
+    pitch = snap.pitch;
+    targetDistance = snap.targetDistance;
+    realDistance = snap.realDistance;
+    softYaw = snap.softYaw;
+    softPitch = snap.softPitch;
+    boomSticky = null;
+    _vel.set(0, 0, 0);
+    pivotReady = false;
+  }
+
+  function horizontalFovRad() {
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    return 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  }
+
+  /**
+   * Asymmetric frustum: lookAt target lands at NDC x=+0.5 (center of right half).
+   * offsetX = -w/4 → optical axis projects to +0.5 (see PerspectiveCamera.updateProjectionMatrix).
+   */
+  function setRightHalfProjection(enabled) {
+    rightHalfProjection = !!enabled;
+    if (!rightHalfProjection) {
+      camera.clearViewOffset();
+      return;
+    }
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
+    camera.setViewOffset(w, h, -w * 0.25, 0, w, h);
+  }
+
+  function distanceToFitBox(box, { rightHalf = true } = {}) {
+    box.getSize(_size);
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const hFov = horizontalFovRad();
+    // Fill most of the right-half cone (larger subject → closer camera)
+    const usableHFov = rightHalf ? hFov * 0.62 : hFov;
+    const fill = 0.9;
+    const fitH = _size.y > 1e-4 ? (_size.y * 0.5) / (Math.tan(vFov / 2) * fill) : 0;
+    const fitW = _size.x > 1e-4 ? (_size.x * 0.5) / Math.tan(usableHFov / 2) : 0;
+    const fitD = _size.z > 1e-4 ? (_size.z * 0.5) / Math.tan(usableHFov / 2) : 0;
+    return Math.max(fitH, fitW, fitD, 6) * 0.72;
+  }
+
+  /** Stable portrait focus — do not use setFromObject (skinned AABB jumps on trait swap). */
+  function updateSkinFocus() {
+    skinFocus.set(
+      character.position.x,
+      character.position.y + CONTROL.capsuleCenterY,
+      character.position.z,
+    );
+  }
+
+  /** Focus + distance so the live player fills the right-half portrait area. */
+  function computeSkinFraming() {
+    updateSkinFocus();
+    const height = CONTROL.capsuleHeight;
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    let dist = height / (2 * Math.tan(vFov / 2) * SKIN_FILL_Y);
+    const hFov = horizontalFovRad();
+    const halfWidth = CONTROL.capsuleRadius;
+    const distW = halfWidth / Math.tan((hFov * 0.5) / 2);
+    dist = Math.max(dist, distW) * 1.15;
+    return THREE.MathUtils.clamp(dist, CONTROL.camMinDistance, Math.min(CONTROL.camMaxDistance, 18));
+  }
+
+  function enterSkinPreview() {
+    if (!character) return;
+    if (!savedPlayView) savedPlayView = capturePlayView();
+    configMode = 'skin';
+    // Face the player (orbit yaw behind = facing; front = facing + 180)
+    const facing = THREE.MathUtils.radToDeg(character.rotation.y);
+    yaw = facing + 180;
+    pitch = 15;
+    // Only retarget distance — realDistance damps from the play camera
+    targetDistance = computeSkinFraming();
+    softYaw = 0;
+    softPitch = 0;
+    boomSticky = null;
+    pivotReady = true;
+    _pivotSmooth.copy(skinFocus);
+    setRightHalfProjection(true);
+  }
+
+  /**
+   * @param {THREE.Box3} box
+   */
+  function enterScenePreview(box) {
+    if (!savedPlayView) savedPlayView = capturePlayView();
+    configMode = 'scene';
+    box.getCenter(sceneTarget);
+    sceneTarget.y += Math.max(0.5, box.max.y - box.min.y) * 0.05;
+    yaw = 40;
+    pitch = 28;
+    targetDistance = distanceToFitBox(box, { rightHalf: true });
+    softYaw = 0;
+    softPitch = 0;
+    boomSticky = null;
+    pivotReady = true;
+    _pivotSmooth.copy(sceneTarget);
+    setRightHalfProjection(true);
+  }
+
+  function exitConfigPreview() {
+    configMode = null;
+    setRightHalfProjection(false);
+    if (savedPlayView) {
+      restorePlayView(savedPlayView);
+      savedPlayView = null;
+    }
   }
 
   function calculateOrbitPosition(pivotPos, yawDeg, pitchDeg, dist, out) {
@@ -81,7 +221,6 @@ export function createSpringArmCamera(camera) {
       if (Math.abs(ny) < dz) ny = 0;
       else ny = Math.sign(ny) * ((Math.abs(ny) - dz) / Math.max(1e-6, 1 - dz));
 
-      // Screen-left (nx < 0) → look left; edge ≈ ±softLookYawDeg
       targetYaw = -nx * (CONTROL.softLookYawDeg ?? 10);
       targetPitch = -ny * (CONTROL.softLookPitchDeg ?? 6);
     }
@@ -168,13 +307,33 @@ export function createSpringArmCamera(camera) {
    * @param {{ moving?: boolean, facingYawDeg?: number }} [status]
    */
   function lateUpdate(deltaTime, input, status = {}) {
-    if (!character) return;
+    if (!character && configMode !== 'scene') return;
 
     const dt = Math.min(deltaTime, 0.05);
+    const sens = CONTROL.mouseSensitivity;
+    const inSkin = configMode === 'skin';
+    const inScene = configMode === 'scene';
+    const playLocked = uiOpen && !inSkin && !inScene;
 
-    if (!uiOpen) {
-      const sens = CONTROL.mouseSensitivity;
-
+    if (inSkin || inScene) {
+      if (input.rotateCamera) {
+        yaw -= input.lookX * sens;
+        const pitchLo = inScene ? -40 : CONTROL.pitchMin;
+        const pitchHi = inScene ? 75 : CONTROL.pitchMax;
+        pitch = THREE.MathUtils.clamp(pitch + input.lookY * sens, pitchLo, pitchHi);
+      }
+      if (input.zoomDelta) {
+        const minD = inScene ? 4 : CONTROL.camMinDistance;
+        const maxD = inScene ? Math.max(CONTROL.camMaxDistance, 400) : CONTROL.camMaxDistance;
+        targetDistance = THREE.MathUtils.clamp(
+          targetDistance + input.zoomDelta * 0.01,
+          minD,
+          maxD,
+        );
+      }
+      softYaw = 0;
+      softPitch = 0;
+    } else if (!playLocked) {
       if (input.rotateCamera) {
         bakeSoftLook();
         yaw -= input.lookX * sens;
@@ -193,7 +352,6 @@ export function createSpringArmCamera(camera) {
           const maxStep = (CONTROL.autoYawSpeed ?? 70) * dt;
           yaw = lerpAngleDeg(yaw, status.facingYawDeg, maxStep);
         }
-        // No LMB: mouse position on screen → capped soft look (±10° yaw at edges)
         updateSoftLook(dt, input, true);
       }
 
@@ -208,7 +366,40 @@ export function createSpringArmCamera(camera) {
       updateSoftLook(dt, input, false);
     }
 
-    // Pivot: hard XZ, soft Y (kills foot-snap flicker)
+    const pitchLo = inScene ? -40 : CONTROL.pitchMin;
+    const pitchHi = inScene ? 75 : CONTROL.pitchMax;
+    const viewYaw = yaw + softYaw;
+    const viewPitch = THREE.MathUtils.clamp(pitch + softPitch, pitchLo, pitchHi);
+
+    if (inScene) {
+      if (rightHalfProjection) setRightHalfProjection(true);
+      _pivot.copy(sceneTarget);
+      _pivotSmooth.copy(sceneTarget);
+      const k = Math.min(1, CONTROL.springBackSpeed * dt);
+      realDistance += (targetDistance - realDistance) * k;
+      calculateOrbitPosition(_pivotSmooth, viewYaw, viewPitch, realDistance, _final);
+      smoothDampVec3(camera.position, _final, _vel, CONTROL.camSmoothDamp, dt);
+      camera.lookAt(_pivotSmooth);
+      camera.updateMatrixWorld(true);
+      return;
+    }
+
+    if (!character) return;
+
+    if (inSkin) {
+      if (rightHalfProjection) setRightHalfProjection(true);
+      updateSkinFocus();
+      _pivotSmooth.copy(skinFocus);
+      const k = Math.min(1, CONTROL.springBackSpeed * dt);
+      realDistance += (targetDistance - realDistance) * k;
+      // Look at stable capsule center; setViewOffset places them in the right half
+      calculateOrbitPosition(_pivotSmooth, viewYaw, viewPitch, realDistance, _final);
+      smoothDampVec3(camera.position, _final, _vel, CONTROL.camSmoothDamp, dt);
+      camera.lookAt(_pivotSmooth);
+      camera.updateMatrixWorld(true);
+      return;
+    }
+
     _pivot.set(
       character.position.x,
       character.position.y + CONTROL.cameraOffsetY,
@@ -223,8 +414,7 @@ export function createSpringArmCamera(camera) {
       _pivotSmooth.y += (_pivot.y - _pivotSmooth.y) * Math.min(1, 12 * dt);
     }
 
-    // Boom: sticky + slow pull / spring (no hard snap → no flicker)
-    const hitDist = uiOpen ? null : raycastBoom(_pivotSmooth);
+    const hitDist = playLocked ? null : raycastBoom(_pivotSmooth);
     if (hitDist != null) {
       if (boomSticky == null || hitDist < boomSticky - 0.08) boomSticky = hitDist;
       else if (hitDist > boomSticky + 0.2) boomSticky = hitDist;
@@ -238,12 +428,6 @@ export function createSpringArmCamera(camera) {
       realDistance += (targetDistance - realDistance) * k;
     }
 
-    const viewYaw = yaw + softYaw;
-    const viewPitch = THREE.MathUtils.clamp(
-      pitch + softPitch,
-      CONTROL.pitchMin,
-      CONTROL.pitchMax,
-    );
     calculateOrbitPosition(_pivotSmooth, viewYaw, viewPitch, realDistance, _final);
     smoothDampVec3(camera.position, _final, _vel, CONTROL.camSmoothDamp, dt);
     camera.lookAt(_pivotSmooth);
@@ -257,5 +441,11 @@ export function createSpringArmCamera(camera) {
     lateUpdate,
     getYawRad,
     getYawDeg,
+    enterSkinPreview,
+    enterScenePreview,
+    exitConfigPreview,
+    get configMode() {
+      return configMode;
+    },
   };
 }
