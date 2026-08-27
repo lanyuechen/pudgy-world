@@ -1,10 +1,33 @@
 /**
- * Prefix public asset paths with Vite `base` (needed for GitHub Pages project sites).
- * Accepts `/assets/...` or `assets/...`.
+ * Resolve a public asset path for loaders.
+ *
+ * Precedence:
+ * 1. Absolute http(s) URL → unchanged
+ * 2. `VITE_ASSET_BASE` (CDN / object storage origin) when set
+ * 3. Vite `BASE_URL` (e.g. `/pudgy-world/` on GitHub Pages)
+ *
+ * Accepts `/assets/...` or `assets/...`. CDN base may be
+ * `https://cdn.example.com/pudgy-world/` or `https://cdn.example.com/` —
+ * paths always include the `assets/...` segment.
+ */
+export function getAssetBase() {
+  const raw = import.meta.env.VITE_ASSET_BASE;
+  if (raw == null || String(raw).trim() === '') {
+    return import.meta.env.BASE_URL || '/';
+  }
+  const base = String(raw).trim();
+  return base.endsWith('/') ? base : `${base}/`;
+}
+
+/**
+ * @param {string} path
+ * @returns {string}
  */
 export function assetUrl(path) {
-  const cleaned = String(path).replace(/^\//, '');
-  return `${import.meta.env.BASE_URL}${cleaned}`;
+  const input = String(path);
+  if (/^https?:\/\//i.test(input)) return input;
+  const cleaned = input.replace(/^\//, '');
+  return `${getAssetBase()}${cleaned}`;
 }
 
 /** Filenames embedded in FBXs → real files under public/assets/textures/ */

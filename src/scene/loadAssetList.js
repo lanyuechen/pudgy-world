@@ -2,26 +2,12 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import assetListData from '../config/assetListPlacements.json';
 import { assetUrl } from '../config/assetUrl.js';
+import { ASSET_LOAD_CONCURRENCY, mapPool } from '../util/mapPool.js';
 import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
-
-async function mapPool(items, concurrency, worker) {
-  const results = new Array(items.length);
-  let next = 0;
-
-  async function run() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await worker(items[i], i);
-    }
-  }
-
-  const runners = Array.from({ length: Math.min(concurrency, items.length) }, () => run());
-  await Promise.all(runners);
-  return results;
-}
 
 /**
  * Load every FBX placement from Asset_List.unity under a Towns group.
+ * Only runs when the Asset_List catalog scene is opened.
  */
 export async function loadAssetListTowns(loadingManager, onProgress) {
   const materials = await createAtlasMaterials(loadingManager);
@@ -32,7 +18,7 @@ export async function loadAssetListTowns(loadingManager, onProgress) {
   const placements = assetListData.placements;
   let loaded = 0;
 
-  await mapPool(placements, 3, async (placement) => {
+  await mapPool(placements, ASSET_LOAD_CONCURRENCY, async (placement) => {
     onProgress?.(
       `Loading ${placement.name}… (${loaded + 1}/${placements.length})`,
       loaded / placements.length,

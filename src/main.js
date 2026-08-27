@@ -387,6 +387,55 @@ let outlineComposer = null;
 
 /** @type {Map<string, object>} */
 const cache = new Map();
+
+function disposeObject3D(root) {
+  if (!root) return;
+  root.traverse((obj) => {
+    if (obj.geometry) obj.geometry.dispose?.();
+    const mats = obj.material
+      ? Array.isArray(obj.material)
+        ? obj.material
+        : [obj.material]
+      : [];
+    for (const m of mats) {
+      if (!m) continue;
+      for (const key of Object.keys(m)) {
+        const v = m[key];
+        if (v && v.isTexture) v.dispose?.();
+      }
+      m.dispose?.();
+    }
+  });
+}
+
+/** Drop GPU resources for a built world entry (scene-scoped lazy load). */
+function disposeBuiltWorld(entry) {
+  if (!entry || entry.__disposed) return;
+  entry.__disposed = true;
+  try {
+    entry.npcs?.dispose?.();
+  } catch {
+    // ignore
+  }
+  try {
+    entry.dispose?.();
+  } catch {
+    // ignore
+  }
+  if (entry.scene) {
+    disposeObject3D(entry.scene);
+    entry.scene.clear();
+  }
+}
+
+/** Keep only the active scene in memory — revisit reloads (HTTP/CDN cache helps). */
+function evictOtherScenes(keepId) {
+  for (const [id, entry] of cache) {
+    if (id === keepId) continue;
+    disposeBuiltWorld(entry);
+    cache.delete(id);
+  }
+}
 let world = null;
 let playerSystem = null;
 let traitCustomizer = null;
@@ -652,10 +701,12 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
           history.replaceState(null, '', nextHash);
         }
       }
+      evictOtherScenes(id);
     } else {
       const next = await loadPromise;
       if (showGlobalLoading) setProgress(1, '就绪');
       await activateWorld(next, id, { pushHash });
+      evictOtherScenes(id);
     }
   } catch (err) {
     console.error(err);

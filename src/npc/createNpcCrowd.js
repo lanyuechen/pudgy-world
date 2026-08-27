@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ASSET_LOAD_CONCURRENCY, mapPool } from '../util/mapPool.js';
 import { bindNpcAnimations, loadNpcModel } from './loadNpc.js';
 
 /** Slower than player walk (2.5) — casual island amble. */
@@ -99,10 +100,10 @@ export async function createNpcCrowd({
    * }>} */
   const controllers = [];
   const total = placements.length;
+  let loaded = 0;
 
-  for (let i = 0; i < placements.length; i += 1) {
-    const p = placements[i];
-    onProgress?.(`Loading NPC ${p.id}… (${i + 1}/${total})`, (i + 1) / total);
+  await mapPool(placements, ASSET_LOAD_CONCURRENCY, async (p) => {
+    onProgress?.(`Loading NPC ${p.id}… (${loaded + 1}/${total})`, loaded / Math.max(total, 1));
 
     try {
       const { root, fbx } = await loadNpcModel(p.model, loadingManager);
@@ -139,8 +140,11 @@ export async function createNpcCrowd({
       });
     } catch (err) {
       console.error(`[npc] failed to spawn ${p.id}`, err);
+    } finally {
+      loaded += 1;
+      onProgress?.(`Loading NPCs… (${loaded}/${total})`, loaded / Math.max(total, 1));
     }
-  }
+  });
 
   function startWander(c) {
     const walks = c.anim.getWalkKeys();
