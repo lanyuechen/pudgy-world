@@ -16,6 +16,8 @@ import { syncToonLightDirection } from './rendering/toonMaterial.js';
 import { createTraitCustomizer } from './ui/traitCustomizer.js';
 import { createConfigSectionPanel } from './ui/configSectionPanel.js';
 import { createShowcasePreview } from './ui/showcasePreview.js';
+import { createAnimPreview } from './ui/animPreview.js';
+import { getAnimOptions } from './config/animConfig.js';
 import { frameExploreInRightHalf, getSceneBounds, setRightHalfViewOffset } from './ui/configCameraFraming.js';
 import {
   createSceneTransition,
@@ -25,6 +27,7 @@ import {
 
 const { flat: sceneOptions, individuals, otherGroups } = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
+const { groups: animGroups, byId: animById } = getAnimOptions();
 
 const SHOWCASE_GROUP_LABELS = {
   intro: 'Intro',
@@ -40,7 +43,10 @@ const loadingBar = document.getElementById('loading-bar');
 const loadingStatus = document.getElementById('loading-status');
 const scenePanelEl = document.getElementById('scene-panel');
 const showcasePanelEl = document.getElementById('showcase-panel');
+const animPanelEl = document.getElementById('anim-panel');
 const showcaseCanvas = document.getElementById('showcase-canvas');
+const animCanvas = document.getElementById('anim-canvas');
+const animStatusEl = document.getElementById('anim-preview-status');
 const showcaseViewportEl = document.getElementById('showcase-viewport');
 const hintEl = document.getElementById('hint');
 const configToggle = document.getElementById('config-toggle');
@@ -50,6 +56,7 @@ const introSkipEl = document.getElementById('intro-skip');
 const paneScene = document.getElementById('config-pane-scene');
 const paneSkin = document.getElementById('config-pane-skin');
 const paneShowcase = document.getElementById('config-pane-showcase');
+const paneAnim = document.getElementById('config-pane-anim');
 const paneControls = document.getElementById('config-pane-controls');
 const skinTabBtn = document.getElementById('config-tab-skin');
 const navButtons = [...document.querySelectorAll('.config-nav-btn')];
@@ -69,6 +76,8 @@ const scenePanel = createConfigSectionPanel(scenePanelEl, {
 
 /** @type {ReturnType<typeof createShowcasePreview>|null} */
 let showcasePreview = null;
+/** @type {ReturnType<typeof createAnimPreview>|null} */
+let animPreview = null;
 
 const showcasePanel = createConfigSectionPanel(showcasePanelEl, {
   accordion: true,
@@ -87,23 +96,45 @@ const showcasePanel = createConfigSectionPanel(showcasePanelEl, {
   },
 });
 
+const animPanel = createConfigSectionPanel(animPanelEl, {
+  accordion: true,
+  sections: animGroups.map((group, index) => ({
+    id: group.id,
+    label: group.label,
+    count: group.options.length,
+    openByDefault: index === 0,
+    options: group.options.map((opt) => ({ value: opt.id, label: opt.label })),
+  })),
+  onSelect: (_sectionId, optionId) => {
+    const option = animById.get(optionId);
+    if (!option) return;
+    animSelectedId = optionId;
+    animPreview?.previewAnim(option);
+  },
+});
+
 function syncScenePickers(id) {
   scenePanel.syncSelection((sectionId) => (sectionId === 'scenes' ? id : ''));
 }
 
-function resizeShowcasePreview() {
-  if (!showcaseViewportEl || !showcasePreview) return;
+function resizePreviewViewport() {
+  if (!showcaseViewportEl) return;
   const rect = showcaseViewportEl.getBoundingClientRect();
-  showcasePreview.resize(Math.round(rect.width), Math.round(rect.height));
+  const w = Math.round(rect.width);
+  const h = Math.round(rect.height);
+  if (configTab === 'showcase') showcasePreview?.resize(w, h);
+  if (configTab === 'anim') animPreview?.resize(w, h);
 }
 
 syncScenePickers(DEFAULT_SCENE_ID);
 
-/** @type {'scene' | 'skin' | 'showcase' | 'controls'} */
+/** @type {'scene' | 'skin' | 'showcase' | 'anim' | 'controls'} */
 let configTab = 'scene';
 let configOpen = false;
 /** @type {string|null} */
 let showcaseSelectedId = null;
+/** @type {string|null} */
+let animSelectedId = null;
 /** @type {null | { kind: 'explore', target: THREE.Vector3, position: THREE.Vector3, enabled: boolean }} */
 let exploreViewSnapshot = null;
 
@@ -128,11 +159,18 @@ function syncNavUi() {
   paneScene.hidden = configTab !== 'scene';
   paneSkin.hidden = configTab !== 'skin';
   paneShowcase.hidden = configTab !== 'showcase';
+  paneAnim.hidden = configTab !== 'anim';
   paneControls.hidden = configTab !== 'controls';
+  const previewOpen = configTab === 'showcase' || configTab === 'anim';
   configPanel.classList.toggle('is-showcase', configTab === 'showcase');
+  configPanel.classList.toggle('is-anim', configTab === 'anim');
   if (showcaseViewportEl) {
-    showcaseViewportEl.setAttribute('aria-hidden', String(configTab !== 'showcase'));
+    showcaseViewportEl.setAttribute('aria-hidden', String(!previewOpen));
   }
+  if (showcaseCanvas) showcaseCanvas.hidden = configTab !== 'showcase';
+  if (animCanvas) animCanvas.hidden = configTab !== 'anim';
+  if (animStatusEl) animStatusEl.hidden = configTab !== 'anim';
+  animPreview?.setActive(configTab === 'anim');
 }
 
 function updateSkinTabAvailability() {
@@ -147,7 +185,8 @@ function updateSkinTabAvailability() {
 }
 
 function clearConfigCamera() {
-  configPanel.classList.remove('is-showcase');
+  configPanel.classList.remove('is-showcase', 'is-anim');
+  animPreview?.setActive(false);
   if (playerSystem) {
     playerSystem.setConfigMode(null);
   }
@@ -229,11 +268,36 @@ function applyConfigTab(tab, { force = false } = {}) {
   if (tab === 'showcase') {
     applyShowcaseMode();
     showcasePanel.updateLayout();
-    resizeShowcasePreview();
+    resizePreviewViewport();
     if (showcaseSelectedId) {
       const option = optionById.get(showcaseSelectedId);
       if (option) showcasePreview?.previewOption(option);
     }
+    return;
+  }
+
+  if (tab === 'anim') {
+    applyShowcaseMode();
+    animPanel.updateLayout();
+    // Two frames: panel → 100vw, then flex viewport gets non-zero size.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        resizePreviewViewport();
+        const option =
+          (animSelectedId && animById.get(animSelectedId)) ||
+          animGroups[0]?.options?.[0] ||
+          null;
+        if (option) {
+          animSelectedId = option.id;
+          animPanel.syncSelection((sectionId) =>
+            sectionId === option.group ? option.id : '',
+          );
+          animPreview?.previewAnim(option);
+        } else {
+          animPreview?.ensurePlayer?.();
+        }
+      });
+    });
     return;
   }
 
@@ -266,7 +330,7 @@ configToggle.addEventListener('click', (e) => {
 for (const btn of navButtons) {
   btn.addEventListener('click', () => {
     if (btn.disabled) return;
-    applyConfigTab(/** @type {'scene'|'skin'|'showcase'|'controls'} */ (btn.dataset.tab), {
+    applyConfigTab(/** @type {'scene'|'skin'|'showcase'|'anim'|'controls'} */ (btn.dataset.tab), {
       force: true,
     });
   });
@@ -300,6 +364,7 @@ loadingManager.onError = (url) => {
 };
 
 showcasePreview = createShowcasePreview(showcaseCanvas, loadingManager);
+animPreview = createAnimPreview(animCanvas, loadingManager, { statusEl: animStatusEl });
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -508,6 +573,7 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
   switching = true;
   scenePanel.setAllDisabled(true);
   showcasePanel.setAllDisabled(true);
+  animPanel.setAllDisabled(true);
   syncScenePickers(id);
   if (showGlobalLoading) {
     showLoading(true);
@@ -607,6 +673,7 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
     transitioning = false;
     scenePanel.setAllDisabled(false);
     showcasePanel.setAllDisabled(false);
+    animPanel.setAllDisabled(false);
     if (currentId) syncScenePickers(currentId);
     if (showGlobalLoading) showLoading(false);
   }
@@ -655,6 +722,9 @@ function animate() {
   if (configOpen && configTab === 'showcase') {
     showcasePreview?.update(dt);
   }
+  if (configOpen && configTab === 'anim') {
+    animPreview?.update(dt);
+  }
   if (world?.scene) {
     if (world.lights?.sun) {
       syncToonLightDirection(world.scene, world.lights.sun);
@@ -669,7 +739,9 @@ function onResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   outlineComposer?.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
-  if (configOpen && configTab === 'showcase') resizeShowcasePreview();
+  if (configOpen && (configTab === 'showcase' || configTab === 'anim')) {
+    resizePreviewViewport();
+  }
   if (configOpen && !transitioning) applyConfigTab(configTab, { force: true });
 }
 window.addEventListener('resize', onResize);

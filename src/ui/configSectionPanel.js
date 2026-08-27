@@ -78,13 +78,20 @@ export function createConfigSectionPanel(containerEl, { sections, accordion = fa
     }
 
     const available = panelHeight - fixedHeight;
-    if (available <= 0) return;
+    if (available <= 40) {
+      // Not enough room for an inner list scroller (e.g. many accordion headers).
+      // Let the parent pane scroll the whole panel instead.
+      return;
+    }
+
+    // When multiple sections are open, split remaining space; accordion usually has one.
+    const share = Math.floor(available / openEntries.length);
 
     for (const entry of openEntries) {
       const listHeight = entry.list.scrollHeight;
-      if (listHeight > available) {
+      if (listHeight > share) {
         entry.body.classList.add('is-scrollable');
-        entry.list.style.maxHeight = `${available}px`;
+        entry.list.style.maxHeight = `${share}px`;
         entry.list.style.overflowY = 'auto';
       }
     }

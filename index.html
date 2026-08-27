@@ -104,6 +104,20 @@
                 <button
                   type="button"
                   class="config-nav-btn"
+                  data-tab="anim"
+                  aria-pressed="false"
+                  aria-label="动画"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M13.5 2c-5.33.11-9.55 4.41-9.55 9.75 0 2.13.69 4.1 1.86 5.7L3 21l4.07-1.07c1.54.95 3.34 1.5 5.28 1.5 5.52 0 10-4.48 10-10S19.02 2.11 13.5 2zM12 18.5c-1.54 0-2.96-.48-4.14-1.3l-.3-.19-2.08.55.56-2.02-.2-.32A6.47 6.47 0 015.5 11.75c0-3.58 2.92-6.5 6.5-6.5h.12c3.5.1 6.32 2.97 6.32 6.5 0 3.58-2.92 6.5-6.44 6.5H12zm3.5-7.75h-1.5v-1.5h-1.5v1.5H11v1.5h1.5v1.5h1.5v-1.5H15.5v-1.5z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
                   data-tab="controls"
                   aria-pressed="false"
                   aria-label="操作"
@@ -126,6 +140,9 @@
                 <div id="config-pane-showcase" class="config-pane" data-pane="showcase" hidden>
                   <div id="showcase-panel" class="config-section-panel"></div>
                 </div>
+                <div id="config-pane-anim" class="config-pane" data-pane="anim" hidden>
+                  <div id="anim-panel" class="config-section-panel"></div>
+                </div>
                 <div id="config-pane-controls" class="config-pane" data-pane="controls" hidden>
                   <p class="config-section-title">操作指导</p>
                   <div id="hint" class="controls-guide">WASD 移动 · Shift 奔跑 · Space 跳跃 · F 扔雪球 · 点击钓鱼 · 拖拽视角 · 滚轮缩放</div>
@@ -134,6 +151,8 @@
             </div>
             <div class="showcase-viewport" id="showcase-viewport" aria-hidden="true">
               <canvas id="showcase-canvas" aria-label="橱窗预览"></canvas>
+              <canvas id="anim-canvas" hidden aria-label="动画预览"></canvas>
+              <p id="anim-preview-status" class="anim-preview-status" hidden></p>
             </div>
           </div>
         </div>
