@@ -3,7 +3,9 @@ import { assetUrl } from './assetUrl.js';
 /**
  * Animation FBX catalog under public/assets/models/animations/.
  * Grouped by source folder for the 动画 config tab.
- * Only includes FBX versions supported by Three.js (>= 6400).
+ * Only includes character clip FBXs supported by Three.js (>= 6400).
+ * Prop clips (doors / seagull / bus) live in animations/Extras/ but are
+ * scene assets, not player-preview clips.
  */
 
 /** @typedef {{ id: string, label: string, group: string, url: string, file: string }} AnimOption */
@@ -12,10 +14,8 @@ const GROUP_DEFS = [
   { id: 'pudgy', label: '玩家(Pudgy)', dir: 'Pudgy_Animations' },
   { id: 'npc', label: 'NPC', dir: 'NPC_Animations' },
   { id: 'v1-player', label: 'V1 · 玩家', dir: 'V1/Player_Anim' },
-  { id: 'v1-npc', label: 'V1 · NPC', dir: 'V1/NPC_Anim' },
   { id: 'v1-fishing', label: 'V1 · 钓鱼', dir: 'V1/Fishing_Anim' },
   { id: 'v1-regular', label: 'V1 · Regular', dir: 'V1/Fishing_Anim/_RegularAnimation_FIXED' },
-  { id: 'v1-fishing-legacy', label: 'V1 · 钓鱼旧版', dir: 'V1/Fishing_Anim/V1' },
 ];
 
 /** Static file lists (keep in sync with public/assets/models/animations/). */
@@ -69,28 +69,6 @@ const FILES_BY_DIR = {
     'Anim_Slide_01.fbx',
     'Anim_Throw_01.fbx',
   ],
-  'V1/NPC_Anim': [
-    'Anim_NPCIdleJump_01.fbx',
-    'Anim_NPCIdle_01.fbx',
-    'Anim_NPCIdle_02.fbx',
-    'Anim_NPCIdle_03.fbx',
-    'Anim_NPCIdle_04.fbx',
-    'Anim_NPCIdle_05.fbx',
-    'Anim_NPCTalk_01.fbx',
-    'Anim_NPCTalk_02.fbx',
-    'Anim_NPCTalk_03.fbx',
-    'Anim_NPCWalk_01.fbx',
-    'Anim_NPCWalk_02.fbx',
-    'Anim_NPCWalk_03.fbx',
-    'Anim_NPCWalk_04.fbx',
-    'Anim_NPCWalk_05.fbx',
-    'Anim_NPC_BallThrow_01.fbx',
-    'Anim_NPC_SitTalk_01.fbx',
-    'Anim_NPC_SitTalk_02.fbx',
-    'Anim_NPC_Sit_01.fbx',
-    'Anim_NPC_Sit_02.fbx',
-    'Anim_NPC_Wave_02.fbx',
-  ],
   'V1/Fishing_Anim': [
     'Anim_FishingCast_02.fbx',
     'Anim_FishingFishAlternate_01.fbx',
@@ -110,11 +88,6 @@ const FILES_BY_DIR = {
     'Anim_Slide_02.fbx',
     'Anim_Throw_02.fbx',
     'Anim_Walk_02.fbx',
-  ],
-  'V1/Fishing_Anim/V1': [
-    'Anim_FishingCast.fbx',
-    'Anim_FishingFish.fbx',
-    'Anim_FishingIdle.fbx',
   ],
 };
 

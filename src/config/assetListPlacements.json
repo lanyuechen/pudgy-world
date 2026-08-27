@@ -194,7 +194,7 @@
     },
     {
       "name": "Seagul_Animated_01",
-      "url": "/assets/models/extras/Seagul_Animated_01.fbx",
+      "url": "/assets/models/animations/Extras/Seagul_Animated_01.fbx",
       "position": {
         "x": 71.39685,
         "y": 2.45,
@@ -314,7 +314,7 @@
     },
     {
       "name": "Anim_BigDoor_Open_01",
-      "url": "/assets/models/extras/Anim_BigDoor_Open_01.fbx",
+      "url": "/assets/models/animations/Extras/Anim_BigDoor_Open_01.fbx",
       "position": {
         "x": 81.855526,
         "y": -4.9931805e-7,
@@ -334,7 +334,7 @@
     },
     {
       "name": "Animation_SmallDoor_Open_01",
-      "url": "/assets/models/extras/Animation_SmallDoor_Open_01.fbx",
+      "url": "/assets/models/animations/Extras/Animation_SmallDoor_Open_01.fbx",
       "position": {
         "x": 91.13685000000001,
         "y": -3.0378214e-7,
@@ -414,7 +414,7 @@
     },
     {
       "name": "Anim_BigDoor_Shake_01",
-      "url": "/assets/models/extras/Anim_BigDoor_Shake_01.fbx",
+      "url": "/assets/models/animations/Extras/Anim_BigDoor_Shake_01.fbx",
       "position": {
         "x": 86.88685000000001,
         "y": -3.8940925e-8,

@@ -115,12 +115,13 @@ PudgyWorldAssets/
 
 场景下拉：**NPCs** 分组可预览全部已拷角色；Individuals 场景内默认只刷少量 NPC（见 `INDIVIDUAL_NPCS`）。
 
-### 3.3 Animations（~222MB，~97 FBX）
+### 3.3 Animations（统一目录 `public/assets/models/animations/`）
 
 | 子目录 | Web |
 |--------|-----|
-| `NPC_Animations/` | **部分**：10 套通用 idle/walk/talk/wave → `public/.../npcs/anims/` |
-| `Pudgy_Animations/` / `V1/` | **部分**：玩家移动/钓鱼等动画嵌在 `player_pudgy` 或单独加载逻辑中；大量变体未全拷 |
+| `NPC_Animations/` | 通用 idle/walk/talk/wave 等 → `animations/NPC_Animations/`（`npcConfig` + 动画配置页） |
+| `Pudgy_Animations/` / `V1/` | 玩家 / 钓鱼变体 → `animations/Pudgy_Animations/`、`animations/V1/`（动画配置页预览；运行时仍可读玩家 FBX 内嵌 clip） |
+| 道具动画（门 / 海鸥 / 巴士等） | → `animations/Extras/`（场景摆放引用，非角色预览） |
 
 ### 3.4 Fish Models（~3MB，~51 FBX）
 
@@ -170,7 +171,8 @@ public/assets/
     ├── individuals/       # 可玩单岛
     ├── extras/            # 道具 / Lobby 等
     ├── levels/            # 任务收集物
-    ├── npcs/              # 角色 + anims/
+    ├── npcs/              # 角色 FBX（动画不在此）
+    ├── animations/        # 全部动画：NPC / Pudgy / V1 / Extras
     ├── player/            # 本体 + traits/ + fishing/
     └── fish/              # 鱼类
 ```

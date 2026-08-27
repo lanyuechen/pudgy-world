@@ -2,18 +2,18 @@ import { assetUrl } from './assetUrl.js';
 
 /** Shared NPC animation clips (standard pudgy skeleton). */
 export const NPC_ANIMS = {
-  idle1: assetUrl('/assets/models/npcs/anims/Anim_Idle_01_02.fbx'),
-  idle2: assetUrl('/assets/models/npcs/anims/Anim_Idle_02_02.fbx'),
-  idle3: assetUrl('/assets/models/npcs/anims/Anim_Idle_03_02.fbx'),
-  idle4: assetUrl('/assets/models/npcs/anims/Anim_Idle_04_02.fbx'),
-  wave: assetUrl('/assets/models/npcs/anims/Anim_Wave_02.fbx'),
-  talk: assetUrl('/assets/models/npcs/anims/Anim_NPC_Talk_02.fbx'),
-  talkHappy: assetUrl('/assets/models/npcs/anims/Anim_NPC_TalkHappy_02.fbx'),
-  talkConfused: assetUrl('/assets/models/npcs/anims/Anim_NPC_TalkConfused_02.fbx'),
-  walk1: assetUrl('/assets/models/npcs/anims/Anim_NPC_WalkStyle_01_02.fbx'),
-  walk2: assetUrl('/assets/models/npcs/anims/Anim_NPC_WalkStyle_02_02.fbx'),
-  bonkoIdle: assetUrl('/assets/models/npcs/anims/Anim_BonkoIdle_01.fbx'),
-  bonkoTalk: assetUrl('/assets/models/npcs/anims/Anim_BonkoTalk_01.fbx'),
+  idle1: assetUrl('/assets/models/animations/NPC_Animations/Anim_Idle_01_02.fbx'),
+  idle2: assetUrl('/assets/models/animations/NPC_Animations/Anim_Idle_02_02.fbx'),
+  idle3: assetUrl('/assets/models/animations/NPC_Animations/Anim_Idle_03_02.fbx'),
+  idle4: assetUrl('/assets/models/animations/NPC_Animations/Anim_Idle_04_02.fbx'),
+  wave: assetUrl('/assets/models/animations/NPC_Animations/Anim_Wave_02.fbx'),
+  talk: assetUrl('/assets/models/animations/NPC_Animations/Anim_NPC_Talk_02.fbx'),
+  talkHappy: assetUrl('/assets/models/animations/NPC_Animations/Anim_NPC_TalkHappy_02.fbx'),
+  talkConfused: assetUrl('/assets/models/animations/NPC_Animations/Anim_NPC_TalkConfused_02.fbx'),
+  walk1: assetUrl('/assets/models/animations/NPC_Animations/Anim_NPC_WalkStyle_01_02.fbx'),
+  walk2: assetUrl('/assets/models/animations/NPC_Animations/Anim_NPC_WalkStyle_02_02.fbx'),
+  bonkoIdle: assetUrl('/assets/models/animations/NPC_Animations/Anim_BonkoIdle_01.fbx'),
+  bonkoTalk: assetUrl('/assets/models/animations/NPC_Animations/Anim_BonkoTalk_01.fbx'),
 };
 
 /** All NPC character models under public/assets/models/npcs/. */
