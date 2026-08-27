@@ -8,6 +8,21 @@ const PLAZA_ID = 'Individual_PenguPlaza_02';
 const INTRO_ID = INTRO.id;
 const DEFAULT_ID = INTRO_ID;
 
+/**
+ * Product town names that map to scene assets — label as 中文名(英文名).
+ * Keys are PascalCase asset stems (Individual_<Key>_NN).
+ */
+const PUDGY_TOWN_DISPLAY = {
+  PenguPlaza: { zh: '企鹅广场', en: 'Pengu Plaza' },
+  IceBreakerAlley: { zh: '破冰巷', en: 'Icebreaker Alley' },
+  PudgyPort: { zh: '胖企鹅港口', en: 'Pudgy Port' },
+  BowlCutBeach: { zh: '碗剪海滩', en: 'Bowlcut Beach' },
+  PudgyPeaks: { zh: '胖企鹅山峰', en: 'Pudgy Peaks' },
+  WhisperingHollow: { zh: '低语幽谷', en: 'Whispering Hollow' },
+  BoogieBerg: { zh: '布吉冰山', en: 'Boogie Berg' },
+  CoralCove: { zh: '珊瑚湾', en: 'Coral Cove' },
+};
+
 function toLabel(name) {
   return name
     .replace(/^(Individual_|Environment_|Asset_|Extras_|Anim_|Animation_|Collider_|NPC_)/, '')
@@ -18,7 +33,30 @@ function toLabel(name) {
 }
 
 function townLabel(town) {
+  const mapped = PUDGY_TOWN_DISPLAY[town];
+  if (mapped) return `${mapped.zh}(${mapped.en})`;
   return town.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+/** @returns {{ key: string, version: string | null } | null} */
+function parseIndividualTown(name) {
+  const bare = name.replace(/^(Individual_|Environment_)/, '');
+  const m = bare.match(/^(.+?)(?:_0*(\d+))?$/);
+  if (!m) return null;
+  return { key: m[1], version: m[2] ?? null };
+}
+
+/** Individuals: mapped towns → 中文名(英文名)[+ version]; others keep auto label. */
+function individualLabel(name) {
+  const parsed = parseIndividualTown(name);
+  if (parsed) {
+    const mapped = PUDGY_TOWN_DISPLAY[parsed.key];
+    if (mapped) {
+      const base = `${mapped.zh}(${mapped.en})`;
+      return parsed.version ? `${base} ${parsed.version}` : base;
+    }
+  }
+  return toLabel(name);
 }
 
 function npcLabel(_modelKey, url) {
@@ -51,11 +89,11 @@ export function getSceneOptions() {
     .sort((a, b) => {
       if (a.name === PLAZA_ID) return -1;
       if (b.name === PLAZA_ID) return 1;
-      return toLabel(a.name).localeCompare(toLabel(b.name));
+      return individualLabel(a.name).localeCompare(individualLabel(b.name), 'zh');
     })
     .map((p) => ({
       id: p.name,
-      label: toLabel(p.name),
+      label: individualLabel(p.name),
       placement: byName.get(p.name),
       isIntro: false,
       isTheBerg: false,

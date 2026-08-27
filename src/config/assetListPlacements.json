@@ -691,6 +691,34 @@
         "y": 1.0,
         "z": 1.0
       }
+    },
+    {
+      "name": "Individual_WhisperingHollow_03",
+      "url": "/assets/models/individuals/Individual_WhisperingHollow_03.fbx",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    {
+      "name": "Individual_BoogieBerg_03",
+      "url": "/assets/models/individuals/Individual_BoogieBerg_03.fbx",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    {
+      "name": "Individual_CoralCove_03",
+      "url": "/assets/models/individuals/Individual_CoralCove_03.fbx",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    {
+      "name": "Individual_BlubberBay_03",
+      "url": "/assets/models/individuals/Individual_BlubberBay_03.fbx",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
     }
   ]
 }
