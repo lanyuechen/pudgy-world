@@ -17,6 +17,11 @@ import { createTraitCustomizer } from './ui/traitCustomizer.js';
 import { createConfigSectionPanel } from './ui/configSectionPanel.js';
 import { createShowcasePreview } from './ui/showcasePreview.js';
 import { frameExploreInRightHalf, getSceneBounds, setRightHalfViewOffset } from './ui/configCameraFraming.js';
+import {
+  createSceneTransition,
+  getWorldSlideRoots,
+  resetSlideRoots,
+} from './ui/sceneTransition.js';
 
 const { flat: sceneOptions, individuals, otherGroups } = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
@@ -175,10 +180,11 @@ function applyShowcaseMode() {
   explore.controls.enabled = false;
 }
 
-function applySceneOverviewFraming() {
+function applySceneOverviewFraming({ snap = false, fromCurrent = false } = {}) {
+  if (transitioning) return;
   const box = getSceneBounds(world);
   if (playerSystem) {
-    playerSystem.setConfigMode('scene', { box });
+    playerSystem.setConfigMode('scene', { box, snap, fromCurrent });
     return;
   }
 
@@ -321,7 +327,13 @@ let playerSystem = null;
 let traitCustomizer = null;
 let currentId = null;
 let switching = false;
+/** True while content is sliding between scenes (camera locked). */
+let transitioning = false;
+const sceneTransition = createSceneTransition();
 const clock = new THREE.Clock();
+
+const SLIDE_OUT_SEC = 0.85;
+const SLIDE_IN_SEC = 0.85;
 
 function bindOutlineComposer(scene) {
   outlineComposer?.dispose();
@@ -395,7 +407,7 @@ async function buildScene(option) {
   });
 }
 
-async function attachPlayer(next) {
+async function attachPlayer(next, { syncCamera = true, keepCamera = false } = {}) {
   traitCustomizer?.dispose();
   traitCustomizer = null;
 
@@ -410,17 +422,17 @@ async function attachPlayer(next) {
   if (!next.playable) {
     if (next.isIntro) {
       explore.controls.enabled = false;
-      explore.applyView(next.cameraView);
+      if (!keepCamera) explore.applyView(next.cameraView);
       setHint(false, true);
       updateSkinTabAvailability();
-      if (configOpen) applyConfigTab(configTab, { force: true });
+      if (configOpen && !keepCamera) applyConfigTab(configTab, { force: true });
       return;
     }
-    explore.controls.enabled = true;
-    explore.applyView(next.cameraView);
+    explore.controls.enabled = !keepCamera;
+    if (!keepCamera) explore.applyView(next.cameraView);
     setHint(false);
     updateSkinTabAvailability();
-    if (configOpen) applyConfigTab(configTab, { force: true });
+    if (configOpen && !keepCamera) applyConfigTab(configTab, { force: true });
     return;
   }
 
@@ -429,7 +441,7 @@ async function attachPlayer(next) {
     camera.far = next.cameraView.far;
     camera.updateProjectionMatrix();
   }
-  setProgress(0.92, '生成角色…');
+  if (!transitioning) setProgress(0.92, '生成角色…');
   playerSystem = await createPlayerSystem({
     scene: next.scene,
     camera,
@@ -438,61 +450,162 @@ async function attachPlayer(next) {
     loadingManager,
     fishingHoles: next.fishingHoles ?? null,
     spawn: next.spawn,
+    syncCamera,
   });
   traitCustomizer = createTraitCustomizer(playerSystem.traitEquipper, traitsPanel);
   setHint(true);
   updateSkinTabAvailability();
-  if (configOpen) applyConfigTab(configTab, { force: true });
+  if (configOpen && !keepCamera) applyConfigTab(configTab, { force: true });
 }
 
-async function loadScene(id, { pushHash = true } = {}) {
+function disposeActivePlayer() {
+  traitCustomizer?.dispose();
+  traitCustomizer = null;
+  if (playerSystem) {
+    playerSystem.dispose();
+    playerSystem = null;
+  }
+  traitsPanel.replaceChildren();
+  updateSkinTabAvailability();
+}
+
+async function ensureBuiltScene(option) {
+  let next = cache.get(option.id);
+  if (!next) {
+    next = await buildScene(option);
+    cache.set(option.id, next);
+  }
+  return next;
+}
+
+/**
+ * Swap in a built world without a slide (first load / fallback).
+ */
+async function activateWorld(next, id, { pushHash }) {
+  disposeActivePlayer();
+  world = next;
+  currentId = id;
+  bindOutlineComposer(next.scene);
+  await attachPlayer(next);
+  if (pushHash) {
+    const nextHash = `#${encodeURIComponent(id)}`;
+    if (location.hash !== nextHash) {
+      history.replaceState(null, '', nextHash);
+    }
+  }
+}
+
+async function loadScene(id, { pushHash = true, useLoading } = {}) {
   if (!optionById.has(id) || switching) return;
   if (id === currentId && world) return;
 
   const option = optionById.get(id);
+  const showGlobalLoading = useLoading ?? world === null;
+  const useSlideTransition = !showGlobalLoading && Boolean(world?.scene);
   switching = true;
   scenePanel.setAllDisabled(true);
   showcasePanel.setAllDisabled(true);
   syncScenePickers(id);
-  showLoading(true);
-  setProgress(0.05, `构建 ${option.label}…`);
+  if (showGlobalLoading) {
+    showLoading(true);
+    setProgress(0.05, `构建 ${option.label}…`);
+  }
 
   // Drop explore snapshot; will re-frame after load if panel still open.
   exploreViewSnapshot = null;
 
+  /** @type {THREE.Object3D[]} */
+  let exitRoots = [];
+  /** @type {THREE.Object3D[]} */
+  let enterRoots = [];
+
   try {
-    let next = cache.get(id);
-    if (!next) {
-      next = await buildScene(option);
-      cache.set(id, next);
-    }
+    const loadPromise = ensureBuiltScene(option);
 
-    if (playerSystem) {
-      playerSystem.dispose();
-      playerSystem = null;
-    }
+    if (useSlideTransition) {
+      exitRoots = getWorldSlideRoots(world);
+      transitioning = true;
+      explore.controls.enabled = false;
+      disposeActivePlayer();
 
-    world = next;
-    currentId = id;
-    bindOutlineComposer(next.scene);
-    await attachPlayer(next);
-    setProgress(1, '就绪');
-    if (pushHash) {
-      const nextHash = `#${encodeURIComponent(id)}`;
-      if (location.hash !== nextHash) {
-        history.replaceState(null, '', nextHash);
+      const exitPromise = sceneTransition.slideOut(exitRoots, camera, {
+        duration: SLIDE_OUT_SEC,
+      });
+
+      const next = await loadPromise;
+      enterRoots = getWorldSlideRoots(next);
+      resetSlideRoots(enterRoots);
+
+      await exitPromise;
+      // Keep old content off-screen until we stop rendering that scene.
+      for (const root of exitRoots) root.visible = false;
+
+      // Empty gap: hide new content, swap scene, snap camera to new overview.
+      for (const root of enterRoots) root.visible = false;
+      world = next;
+      currentId = id;
+      bindOutlineComposer(next.scene);
+      const overviewBox = getSceneBounds(next);
+      frameExploreInRightHalf(camera, explore.controls, overviewBox);
+      explore.controls.enabled = false;
+      try {
+        renderer.compile(next.scene, camera);
+      } catch {
+        // compile is best-effort
       }
+
+      // Place + slide in relative to the already-correct overview camera.
+      const prepared = sceneTransition.placeAbove(enterRoots, camera);
+      for (const root of enterRoots) root.visible = true;
+
+      await sceneTransition.slideIn(prepared, { duration: SLIDE_IN_SEC });
+      resetSlideRoots(enterRoots);
+
+      // Restore cached previous scene for a later revisit.
+      for (const root of exitRoots) {
+        root.visible = true;
+      }
+      resetSlideRoots(exitRoots);
+
+      await attachPlayer(next, { syncCamera: false, keepCamera: true });
+      transitioning = false;
+      // Sync spring-arm / config mode to the pose already snapped in the empty gap.
+      if (configOpen && configTab === 'scene') {
+        applySceneOverviewFraming({ snap: true });
+      } else if (configOpen) {
+        applyConfigTab(configTab, { force: true });
+      } else {
+        applySceneOverviewFraming({ snap: true });
+      }
+      if (pushHash) {
+        const nextHash = `#${encodeURIComponent(id)}`;
+        if (location.hash !== nextHash) {
+          history.replaceState(null, '', nextHash);
+        }
+      }
+    } else {
+      const next = await loadPromise;
+      if (showGlobalLoading) setProgress(1, '就绪');
+      await activateWorld(next, id, { pushHash });
     }
   } catch (err) {
     console.error(err);
-    loadingStatus.textContent = err?.message || String(err);
+    sceneTransition.cancel();
+    transitioning = false;
+    for (const root of exitRoots) {
+      root.visible = true;
+    }
+    resetSlideRoots(exitRoots);
+    resetSlideRoots(enterRoots);
+    if (showGlobalLoading) loadingStatus.textContent = err?.message || String(err);
     throw err;
   } finally {
     switching = false;
+    transitioning = false;
     scenePanel.setAllDisabled(false);
     showcasePanel.setAllDisabled(false);
     if (currentId) syncScenePickers(currentId);
-    showLoading(false);
+    if (showGlobalLoading) showLoading(false);
   }
 }
 
@@ -520,7 +633,11 @@ window.addEventListener('keydown', (e) => {
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (playerSystem) {
+
+  if (transitioning) {
+    sceneTransition.update(dt);
+    if (world && !world.isIntro) world.update?.(dt);
+  } else if (playerSystem) {
     playerSystem.update(dt);
     world?.update?.(dt);
   } else if (world?.isIntro) {
@@ -550,7 +667,7 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   outlineComposer?.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
   if (configOpen && configTab === 'showcase') resizeShowcasePreview();
-  if (configOpen) applyConfigTab(configTab, { force: true });
+  if (configOpen && !transitioning) applyConfigTab(configTab, { force: true });
 }
 window.addEventListener('resize', onResize);
 

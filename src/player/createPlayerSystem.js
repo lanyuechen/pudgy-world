@@ -51,6 +51,8 @@ export async function createPlayerSystem({
   loadingManager,
   fishingHoles = null,
   spawn = PLAYER.spawn,
+  /** When false, leave the current camera pose (e.g. after scene slide) until setConfigMode. */
+  syncCamera = true,
 } = {}) {
   const { root: model, fbx, animations } = await loadPlayerModel(loadingManager);
   const playerRoot = new THREE.Group();
@@ -109,7 +111,7 @@ export async function createPlayerSystem({
   const slideFx = createSlideFx(scene, playerRoot, slideFxTexture);
   const playerCamera = createSpringArmCamera(camera);
   playerCamera.setObstacles(colliders);
-  playerCamera.bind(playerRoot);
+  playerCamera.bind(playerRoot, { syncCamera });
   const handBone = findHandBone(playerRoot);
   const hitCounter = createSnowballHitCounter();
   hitCounter.setVisible(true);
@@ -172,7 +174,7 @@ export async function createPlayerSystem({
   /**
    * Config panel camera / move lock.
    * @param {null | 'skin' | 'scene' | 'showcase' | 'controls'} mode
-   * @param {{ box?: import('three').Box3 }} [opts]
+   * @param {{ box?: import('three').Box3, snap?: boolean, fromCurrent?: boolean }} [opts]
    */
   function setConfigMode(mode, opts = {}) {
     if (mode === 'skin') {
@@ -193,7 +195,12 @@ export async function createPlayerSystem({
       input.setMoveLocked(true);
       input.setLookLocked(false);
       playerCamera.setUiOpen(false);
-      if (opts.box) playerCamera.enterScenePreview(opts.box);
+      if (opts.box) {
+        playerCamera.enterScenePreview(opts.box, {
+          snap: Boolean(opts.snap),
+          fromCurrent: Boolean(opts.fromCurrent),
+        });
+      }
       return;
     }
     if (mode === 'showcase') {

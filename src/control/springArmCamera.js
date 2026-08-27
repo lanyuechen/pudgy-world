@@ -50,7 +50,7 @@ export function createSpringArmCamera(camera) {
     uiOpen = !!v;
   }
 
-  function bind(characterObject) {
+  function bind(characterObject, { syncCamera = true } = {}) {
     character = characterObject;
     yaw = THREE.MathUtils.radToDeg(character.rotation.y);
     pitch = 15;
@@ -61,7 +61,9 @@ export function createSpringArmCamera(camera) {
     pivotReady = false;
     configMode = null;
     savedPlayView = null;
-    lateUpdate(1 / 60, { lookX: 0, lookY: 0, zoomDelta: 0, rotateCamera: false }, {});
+    if (syncCamera) {
+      lateUpdate(1 / 60, { lookX: 0, lookY: 0, zoomDelta: 0, rotateCamera: false }, {});
+    }
   }
 
   function getYawRad() {
@@ -171,8 +173,12 @@ export function createSpringArmCamera(camera) {
 
   /**
    * @param {THREE.Box3} box
+   * @param {{ snap?: boolean, fromCurrent?: boolean }} [opts]
+   *   snap: teleport to framing
+   *   fromCurrent: keep pose, seed boom from current camera → damp to overview
+   *     (avoids play-distance pull-in)
    */
-  function enterScenePreview(box) {
+  function enterScenePreview(box, { snap = false, fromCurrent = false } = {}) {
     if (!savedPlayView) savedPlayView = capturePlayView();
     configMode = 'scene';
     box.getCenter(sceneTarget);
@@ -186,6 +192,20 @@ export function createSpringArmCamera(camera) {
     pivotReady = true;
     _pivotSmooth.copy(sceneTarget);
     setRightHalfProjection(true);
+    if (snap) {
+      realDistance = targetDistance;
+      _vel.set(0, 0, 0);
+      calculateOrbitPosition(sceneTarget, yaw, pitch, realDistance, _final);
+      camera.position.copy(_final);
+      camera.lookAt(sceneTarget);
+      camera.updateMatrixWorld(true);
+    } else if (fromCurrent) {
+      // Seed from live camera so damp starts at slide-end pose, not play distance (~6).
+      realDistance = Math.max(1, camera.position.distanceTo(sceneTarget));
+      _vel.set(0, 0, 0);
+      _pivot.copy(sceneTarget);
+      _pivotSmooth.copy(sceneTarget);
+    }
   }
 
   function exitConfigPreview() {

@@ -8,6 +8,11 @@
   <body>
     <div id="app">
       <canvas id="c"></canvas>
+      <div id="scene-loading" hidden aria-live="polite" aria-busy="false">
+        <div class="scene-loading-panel">
+          <p class="scene-loading-status" id="scene-loading-status">加载场景…</p>
+        </div>
+      </div>
       <button type="button" id="intro-skip" hidden>跳过开场</button>
       <div id="loading">
         <div class="panel">
