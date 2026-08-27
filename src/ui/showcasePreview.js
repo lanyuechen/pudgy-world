@@ -182,7 +182,9 @@ export function createShowcasePreview(canvas, loadingManager) {
         }
         contentRoot = root;
       } else if (option.isIntro || option.isTheBerg) {
-        contentRoot = await loadFbxRoot(INTRO.bergFbx, option.label || 'Preview');
+        const bergUrl =
+          option.bergMap?.assets?.[0]?.url ?? INTRO.bergFbx;
+        contentRoot = await loadFbxRoot(bergUrl, option.label || 'Preview');
       } else if (option.placement) {
         contentRoot = await loadFbxRoot(option.placement.url, option.placement.name, option.placement);
       } else {

@@ -366,6 +366,8 @@ function finishIntro() {
 
 function sceneIdFromHash() {
   const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+  // Legacy bookmark `#WorldMap` → V_02 assembly
+  if (hash === 'WorldMap') return THE_BERG_SCENE_ID;
   return optionById.has(hash) ? hash : DEFAULT_SCENE_ID;
 }
 
@@ -378,6 +380,7 @@ async function buildScene(option) {
   }
   if (option.isTheBerg) {
     return buildTheBergScene({
+      map: option.bergMap,
       loadingManager,
       onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
     });

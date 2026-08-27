@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-import { THE_BERG_ASSETS } from '../config/theBergAssets.js';
 import { UNITS } from '../config/units.js';
 import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
 
@@ -21,10 +20,12 @@ async function mapPool(items, concurrency, worker) {
 }
 
 /**
- * Load TheBerg base + fillers + Neighborhood_V_02 tiles.
+ * Load TheBerg base + fillers + neighborhood tiles for one map assembly.
  * Pieces keep authored cm world transforms; a shared parent scales cm→m.
+ *
+ * @param {Array<{ name: string, url: string }>} assets
  */
-export async function loadTheBergLand(loadingManager, onProgress) {
+export async function loadTheBergLand(assets, loadingManager, onProgress) {
   const materials = await createAtlasMaterials(loadingManager);
   const fbxLoader = new FBXLoader(loadingManager);
 
@@ -38,9 +39,9 @@ export async function loadTheBergLand(loadingManager, onProgress) {
   land.add(pieces);
 
   let loaded = 0;
-  const total = THE_BERG_ASSETS.length;
+  const total = assets.length;
 
-  await mapPool(THE_BERG_ASSETS, 3, async (asset) => {
+  await mapPool(assets, 3, async (asset) => {
     onProgress?.(`Loading ${asset.name}… (${loaded + 1}/${total})`, loaded / total);
 
     try {

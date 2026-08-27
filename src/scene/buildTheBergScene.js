@@ -2,29 +2,35 @@ import * as THREE from 'three';
 import { createProceduralSky } from './sky.js';
 import { createLights } from './lights.js';
 import { loadTheBergLand } from './loadTheBerg.js';
-import { THE_BERG_CAMERA } from '../config/theBergAssets.js';
+import { THE_BERG_MAP_V02 } from '../config/theBergAssets.js';
 
 /**
- * Continuous world map: base + Berg_Filler + Neighborhood_V_02
- * (explore-only overview — not playable, no NPCs).
+ * Continuous world map for one Berg assembly (explore-only — not playable, no NPCs).
+ *
+ * @param {{ map?: typeof THE_BERG_MAP_V02, loadingManager?: import('three').LoadingManager, onProgress?: Function }} opts
  */
-export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
+export async function buildTheBergScene({
+  map = THE_BERG_MAP_V02,
+  loadingManager,
+  onProgress,
+} = {}) {
   const scene = new THREE.Scene();
-  scene.name = 'WorldMap';
+  scene.name = map.id;
   scene.background = new THREE.Color(0x7ad8ef);
 
   const sky = createProceduralSky(2500);
   scene.add(sky);
 
-  const look = THE_BERG_CAMERA.lookAt;
+  const cameraView = map.camera;
+  const look = cameraView.lookAt;
   const lights = createLights(scene, {
     target: look,
     castShadow: false,
     sunDistance: 500,
   });
 
-  onProgress?.('Loading World Map…', 0.05);
-  const land = await loadTheBergLand(loadingManager, (msg, ratio) => {
+  onProgress?.(`Loading ${map.label}…`, 0.05);
+  const land = await loadTheBergLand(map.assets, loadingManager, (msg, ratio) => {
     onProgress?.(msg, 0.05 + ratio * 0.9);
   });
   scene.add(land);
@@ -33,7 +39,7 @@ export async function buildTheBergScene({ loadingManager, onProgress } = {}) {
     scene,
     lights,
     land,
-    cameraView: THE_BERG_CAMERA,
+    cameraView,
     playable: false,
     update() {},
   };

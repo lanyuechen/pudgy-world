@@ -6,10 +6,10 @@ import { assetUrl } from './assetUrl.js';
  */
 export const INTRO = {
   id: 'Intro',
-  nextSceneId: 'WorldMap',
+  nextSceneId: 'WorldMap_02',
   /** Auto-advance to world map after this many seconds (Skip also works). */
   durationSec: 14,
-  bergFbx: assetUrl('/assets/models/neighborhoods/TheBerg_V_02.fbx'),
+  bergFbx: assetUrl('/assets/models/neighborhoods/TheBerg_V_03.fbx'),
   fishFbx: assetUrl('/assets/models/fish/1.fbx'),
 
   camera: {

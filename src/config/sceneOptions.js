@@ -2,9 +2,11 @@ import assetListData from './assetListPlacements.json';
 import { INTRO } from './introConfig.js';
 import { LEVEL_PROPS, LEVEL_PROP_TRANSFORM } from './levelsConfig.js';
 import { NPC_MODELS } from './npcConfig.js';
+import { THE_BERG_MAPS, THE_BERG_MAP_V02 } from './theBergAssets.js';
 
-const WORLD_MAP_ID = 'WorldMap';
-const PLAZA_ID = 'Individual_PenguPlaza_02';
+const WORLD_MAP_ID = THE_BERG_MAP_V02.id;
+/** Prefer newest Pengu Plaza when present. */
+const PLAZA_ID = 'Individual_PenguPlaza_03';
 const INTRO_ID = INTRO.id;
 const DEFAULT_ID = INTRO_ID;
 
@@ -21,6 +23,15 @@ const PUDGY_TOWN_DISPLAY = {
   WhisperingHollow: { zh: '低语幽谷', en: 'Whispering Hollow' },
   BoogieBerg: { zh: '布吉冰山', en: 'Boogie Berg' },
   CoralCove: { zh: '珊瑚湾', en: 'Coral Cove' },
+  ObbyLobby: { zh: '跑酷大厅', en: 'Obby Lobby' },
+};
+
+/** Holiday / event suffixes on Individual asset stems. */
+const TOWN_SEASON_LABELS = {
+  Christmas: '圣诞',
+  Summer: '夏日',
+  EASTER: '复活节',
+  CincoDeMayo: '五月五日',
 };
 
 function toLabel(name) {
@@ -38,24 +49,28 @@ function townLabel(town) {
   return town.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
-/** @returns {{ key: string, version: string | null } | null} */
-function parseIndividualTown(name) {
-  const bare = name.replace(/^(Individual_|Environment_)/, '');
-  const m = bare.match(/^(.+?)(?:_0*(\d+))?$/);
-  if (!m) return null;
-  return { key: m[1], version: m[2] ?? null };
+function formatTownBase(mapped) {
+  return `${mapped.zh}(${mapped.en})`;
 }
 
-/** Individuals: mapped towns → 中文名(英文名)[+ version]; others keep auto label. */
+/** Individuals: mapped towns → 中文名(英文名)[+ season/version]; others keep auto label. */
 function individualLabel(name) {
-  const parsed = parseIndividualTown(name);
-  if (parsed) {
-    const mapped = PUDGY_TOWN_DISPLAY[parsed.key];
-    if (mapped) {
-      const base = `${mapped.zh}(${mapped.en})`;
-      return parsed.version ? `${base} ${parsed.version}` : base;
+  const bare = name.replace(/^(Individual_|Environment_)/, '');
+
+  for (const [townKey, mapped] of Object.entries(PUDGY_TOWN_DISPLAY)) {
+    const base = formatTownBase(mapped);
+
+    let m = bare.match(new RegExp(`^${townKey}_0*(\\d+)$`));
+    if (m) return `${base} ${m[1]}`;
+
+    for (const [season, seasonZh] of Object.entries(TOWN_SEASON_LABELS)) {
+      m = bare.match(new RegExp(`^${townKey}${season}_0*(\\d+)$`, 'i'));
+      if (m) return `${base} · ${seasonZh}`;
+      m = bare.match(new RegExp(`^${townKey}_${season}_0*(\\d+)$`, 'i'));
+      if (m) return `${base} · ${seasonZh}`;
     }
   }
+
   return toLabel(name);
 }
 
@@ -162,17 +177,18 @@ export function getSceneOptions() {
     group: 'intro',
   };
 
-  const worldMap = {
-    id: WORLD_MAP_ID,
-    label: 'World Map',
+  const worldMaps = THE_BERG_MAPS.map((map) => ({
+    id: map.id,
+    label: map.label,
     placement: null,
+    bergMap: map,
     isIntro: false,
     isTheBerg: true,
     isAssetList: false,
     isPenguPlaza: false,
     isNpcPreview: false,
     group: 'neighborhoods',
-  };
+  }));
 
   const groups = [
     {
@@ -183,7 +199,7 @@ export function getSceneOptions() {
     {
       id: 'neighborhoods',
       label: 'Neighborhoods',
-      options: [worldMap],
+      options: worldMaps,
     },
     {
       id: 'individuals',

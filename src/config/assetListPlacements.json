@@ -21,15 +21,15 @@
         "z": 106.81040999999999
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -41,15 +41,15 @@
         "z": 613.26092
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -61,15 +61,15 @@
         "z": 444.27092
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -81,15 +81,15 @@
         "z": -83.363884
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -101,15 +101,15 @@
         "z": -210.72908
       },
       "rotation": {
-        "x": -0.0,
+        "x": 0,
         "y": 0.91190577,
-        "z": -0.0,
+        "z": 0,
         "w": 0.41039976
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -121,15 +121,15 @@
         "z": 952.23369
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -141,15 +141,15 @@
         "z": -83.54917900000001
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -157,19 +157,19 @@
       "url": "/assets/models/individuals/Individual_JamboreeSquare_02.fbx",
       "position": {
         "x": 689.59365,
-        "y": 0.0,
+        "y": 0,
         "z": -20.958145000000002
       },
       "rotation": {
-        "x": -0.0,
+        "x": 0,
         "y": 0.6637181,
-        "z": -0.0,
+        "z": 0,
         "w": 0.7479829
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -181,15 +181,15 @@
         "z": -83.968912
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -201,15 +201,15 @@
         "z": -83.67908
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -221,15 +221,15 @@
         "z": 498.27092
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -237,19 +237,19 @@
       "url": "/assets/models/individuals/Individual_BowlCutBeach_02.fbx",
       "position": {
         "x": 507.65502000000004,
-        "y": 0.0,
+        "y": 0,
         "z": 62.57090999999999
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -257,19 +257,19 @@
       "url": "/assets/models/individuals/Individual_PudgyPort_01.fbx",
       "position": {
         "x": 248.34685000000002,
-        "y": 0.0,
+        "y": 0,
         "z": -22.829080000000005
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -281,15 +281,15 @@
         "z": -154.62105
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -301,15 +301,15 @@
         "z": -84.15908
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -317,19 +317,19 @@
       "url": "/assets/models/extras/Anim_BigDoor_Open_01.fbx",
       "position": {
         "x": 81.855526,
-        "y": -4.9931805e-07,
+        "y": -4.9931805e-7,
         "z": -103.319965
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -337,19 +337,19 @@
       "url": "/assets/models/extras/Animation_SmallDoor_Open_01.fbx",
       "position": {
         "x": 91.13685000000001,
-        "y": -3.0378214e-07,
+        "y": -3.0378214e-7,
         "z": -101.812027
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -361,15 +361,15 @@
         "z": -83.51625200000001
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -381,15 +381,15 @@
         "z": 60.37091999999999
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -401,15 +401,15 @@
         "z": -82.929092
       },
       "rotation": {
-        "x": -0.0,
+        "x": 0,
         "y": 0.34245798,
-        "z": -0.0,
+        "z": 0,
         "w": 0.9395332
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -417,19 +417,19 @@
       "url": "/assets/models/extras/Anim_BigDoor_Shake_01.fbx",
       "position": {
         "x": 86.88685000000001,
-        "y": -3.8940925e-08,
+        "y": -3.8940925e-8,
         "z": -102.99908
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -441,15 +441,15 @@
         "z": 664.3522200000001
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -461,15 +461,15 @@
         "z": -122.96020000000001
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -477,19 +477,19 @@
       "url": "/assets/models/individuals/Individual_SalmonSettlement_01.fbx",
       "position": {
         "x": 266.54685,
-        "y": 0.0,
+        "y": 0,
         "z": 172.47091999999998
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -501,15 +501,15 @@
         "z": 227.57092
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -521,15 +521,15 @@
         "z": -92.595917
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -541,15 +541,15 @@
         "z": -149.82908
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -561,15 +561,15 @@
         "z": -83.572614
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -581,15 +581,15 @@
         "z": -84.499357
       },
       "rotation": {
-        "x": 0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -597,19 +597,19 @@
       "url": "/assets/models/individuals/Individual_BowlCutBeach_03.fbx",
       "position": {
         "x": 518.6469,
-        "y": 0.0,
+        "y": 0,
         "z": 206.97091999999998
       },
       "rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -621,15 +621,15 @@
         "z": -311.72908
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -641,15 +641,15 @@
         "z": 781.36932
       },
       "rotation": {
-        "x": -0.0,
+        "x": 0,
         "y": 0.97917205,
-        "z": -0.0,
+        "z": 0,
         "w": 0.2030324
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -662,14 +662,14 @@
       },
       "rotation": {
         "x": 6.123234e-17,
-        "y": 1.0,
+        "y": 1,
         "z": -6.123234e-17,
         "w": 5.0532154e-16
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
@@ -677,48 +677,420 @@
       "url": "/assets/models/extras/Environment_Lobby_01.fbx",
       "position": {
         "x": 244.30001,
-        "y": 0.0,
+        "y": 0,
         "z": 69.19999999999999
       },
       "rotation": {
-        "x": -0.0,
-        "y": -0.0,
-        "z": -0.0,
-        "w": 1.0
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
       },
       "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 1,
+        "y": 1,
+        "z": 1
       }
     },
     {
       "name": "Individual_WhisperingHollow_03",
       "url": "/assets/models/individuals/Individual_WhisperingHollow_03.fbx",
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
-      "scale": { "x": 1, "y": 1, "z": 1 }
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
     },
     {
       "name": "Individual_BoogieBerg_03",
       "url": "/assets/models/individuals/Individual_BoogieBerg_03.fbx",
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
-      "scale": { "x": 1, "y": 1, "z": 1 }
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
     },
     {
       "name": "Individual_CoralCove_03",
       "url": "/assets/models/individuals/Individual_CoralCove_03.fbx",
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
-      "scale": { "x": 1, "y": 1, "z": 1 }
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
     },
     {
       "name": "Individual_BlubberBay_03",
       "url": "/assets/models/individuals/Individual_BlubberBay_03.fbx",
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
-      "scale": { "x": 1, "y": 1, "z": 1 }
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_BearTown_03",
+      "url": "/assets/models/individuals/Individual_BearTown_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_BeverlyChills_03",
+      "url": "/assets/models/individuals/Individual_BeverlyChills_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_BeverlyChills_Christmas_02",
+      "url": "/assets/models/individuals/Individual_BeverlyChills_Christmas_02.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_BeverlyChills_CincoDeMayo_01",
+      "url": "/assets/models/individuals/Individual_BeverlyChills_CincoDeMayo_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_BeverlyChills_EASTER_01",
+      "url": "/assets/models/individuals/Individual_BeverlyChills_EASTER_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_BeverlyChills_Summer_01",
+      "url": "/assets/models/individuals/Individual_BeverlyChills_Summer_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_IceBreakerAlley_03",
+      "url": "/assets/models/individuals/Individual_IceBreakerAlley_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_JamboreeSquare_03",
+      "url": "/assets/models/individuals/Individual_JamboreeSquare_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_ObbyLobby_01",
+      "url": "/assets/models/individuals/Individual_ObbyLobby_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PenguPlazaChristmas_01",
+      "url": "/assets/models/individuals/Individual_PenguPlazaChristmas_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PenguPlaza_03",
+      "url": "/assets/models/individuals/Individual_PenguPlaza_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PenguPlaza_CincoDeMayo_01",
+      "url": "/assets/models/individuals/Individual_PenguPlaza_CincoDeMayo_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PenguPlaza_EASTER_01",
+      "url": "/assets/models/individuals/Individual_PenguPlaza_EASTER_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PenguPlaza_Summer_01",
+      "url": "/assets/models/individuals/Individual_PenguPlaza_Summer_01.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PudgyPeaks_03",
+      "url": "/assets/models/individuals/Individual_PudgyPeaks_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    {
+      "name": "Individual_PudgyPort_03",
+      "url": "/assets/models/individuals/Individual_PudgyPort_03.fbx",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
     }
   ]
 }
