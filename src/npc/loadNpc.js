@@ -4,7 +4,7 @@ import { NPC_ANIMS, NPC_MODELS } from '../config/npcConfig.js';
 import { loadModelRoot } from '../loaders/loadModel.js';
 import { MODEL_PROFILE, configureAtlasTexture } from '../loaders/modelProfiles.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
-import { attachHullOutline } from '../rendering/hullOutline.js';
+import { attachHullOutline, stripHullOutline } from '../rendering/hullOutline.js';
 
 /** Cached raw clips per URL (cloned + sanitized per mixer). */
 const clipSourceCache = new Map();
@@ -100,7 +100,8 @@ export async function loadNpcModel(modelKey, loadingManager) {
     const mat = base.clone();
     mat.skinning = true;
     child.material = mat;
-    attachHullOutline(child);
+    stripHullOutline(child);
+    if (!child.isSkinnedMesh) attachHullOutline(child);
     if (child.isSkinnedMesh && child.skeleton) child.skeleton.update();
   }
 

@@ -1,46 +1,32 @@
 import * as THREE from 'three';
 
 /**
- * Exact Unity outline stack (PC_Renderer + Outline Test / M_Outline3).
+ * Post-process outline only (outlineComposer):
+ *   depth  — object silhouettes vs background
+ *   normal — creases / hard edges
+ *   color  — toon band boundaries
  *
- * Hull (Shader Graphs_OutlineShader.mat / Outline Test.shadergraph):
- *   extrude  = NormalWS * (_Outline_Thickness / Object.Scale) * (dist / 2)
- *   fade     = discard when pivotDist/2 >= _Fade_Distance
- *   color    = black, Cull Front, ZWrite Off
- *   mat: thickness=0.009, fade=75; Object.Scale = 1 (Unity FBX bake)
- *   JS: extrude dist = per-vertex view depth (avoids far-pivot blowup);
- *       fade dist = object pivot (Unity Object.Position)
- *
- * PP (M_Outline3.mat / Outline PP.shadergraph):
- *   Roberts diagonals on NormalWS + BlitSource (scene color)
- *   edge = saturate(smoothstep(nThresh, 2, nEdge) + smoothstep(cThresh, 2, cEdge))
- *   overlay lerp(scene, black, edge)
- *   JS: world-space normal RT; color edges sample post-SSAO (Unity BlitSource order)
+ * No hull on skinned meshes (seam gaps) and no N·V rim in toon shader
+ * (tilted faces like hat brims go fully black).
  */
 export const OUTLINE = {
   hull: {
-    /** Mesh inverted-hull (Unity material slot [1]) */
     enabled: false,
-    /** Unity Shader Graphs_OutlineShader.mat _Outline_Thickness */
-    thicknessM: 0.009,
-    /** Unity _Fade_Distance */
+    skinnedEnabled: false,
+    pixelWidth: 2.0,
+    silhouetteCutoff: 0.15,
     fadeDistanceM: 75,
-    /** Unity _Outline_Color */
     color: new THREE.Color(0x000000),
-    /** Unity Divide(distance, 2) */
     distanceScale: 0.5,
   },
 
   pp: {
-    /** Unity M_Outline3.mat _Outline_Thickness (pixels) */
-    thickness: 0.5,
-    /** Unity _Normal_Threshold */
-    normalThreshold: 0.7,
-    /** Unity _Color_Threshold */
-    colorThreshold: 0.9,
-    /** Unity _Color_Outline */
+    enabled: true,
+    thickness: 1.4,
+    normalThreshold: 0.58,
+    colorThreshold: 0.82,
+    depthThreshold: 0.01,
     color: new THREE.Color(0x000000),
-    /** Unity _OVERLAY keyword */
     overlay: true,
   },
 

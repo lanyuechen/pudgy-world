@@ -12,6 +12,7 @@ import { getSceneOptions, DEFAULT_SCENE_ID, THE_BERG_SCENE_ID } from './config/s
 import { INTRO } from './config/introConfig.js';
 import { remapFbxTextureUrl } from './config/assetUrl.js';
 import { createOutlineComposer } from './rendering/outlineComposer.js';
+import { updateHullOutlineViewport } from './rendering/hullOutline.js';
 import { syncToonLightDirection } from './rendering/toonMaterial.js';
 import { createTraitCustomizer } from './ui/traitCustomizer.js';
 import { createConfigSectionPanel } from './ui/configSectionPanel.js';
@@ -457,7 +458,9 @@ const SLIDE_IN_SEC = 0.85;
 function bindOutlineComposer(scene) {
   outlineComposer?.dispose();
   outlineComposer = createOutlineComposer(renderer, scene, camera);
-  outlineComposer.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
+  const pr = renderer.getPixelRatio();
+  outlineComposer.setSize(window.innerWidth, window.innerHeight, pr);
+  updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
 }
 
 function setHint(playable, isIntro = false) {
@@ -794,7 +797,9 @@ function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  outlineComposer?.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
+  const pr = renderer.getPixelRatio();
+  outlineComposer?.setSize(window.innerWidth, window.innerHeight, pr);
+  updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
   if (configOpen && (configTab === 'showcase' || configTab === 'anim')) {
     resizePreviewViewport();
   }

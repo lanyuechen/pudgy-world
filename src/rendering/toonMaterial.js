@@ -3,6 +3,10 @@ import * as THREE from 'three';
 /**
  * Live values from ToonS_TheBerg_ColorAtlas / ToonS_Traits_ColorAtlas
  * (ToonShderGraph: Unlit + MainLightDirection only).
+ *
+ * Character outline is handled by post-process (outlineComposer) — not in this shader.
+ * N·V "rim" blackens entire tilted faces (e.g. hat brims); do not re-add without
+ * screen-space edge detection only.
  */
 export const TOON = {
   shades: 0.49,
@@ -34,6 +38,7 @@ const vertexShader = /* glsl */ `
 
     #include <begin_vertex>
     #include <skinning_vertex>
+
     #include <project_vertex>
   }
 `;
@@ -55,10 +60,6 @@ const fragmentShader = /* glsl */ `
     vec4 tex = texture2D(map, vUv);
     if (tex.a < alphaTest) discard;
 
-    // Unity ToonShderGraph:
-    // r1 = (1 - N·L) * 0.5
-    // q  = floor(r1 / _Shades)
-    // shade = _Max - _Shades * q * (_Max - _Min)
     vec3 N = normalize(vWorldNormal);
     vec3 L = normalize(lightDirection);
     float ndotl = dot(N, L);
@@ -107,7 +108,6 @@ export function createToonMaterial({
     depthWrite,
     lights: false,
     fog: false,
-    // Pull surfaces slightly forward to reduce coplanar z-fight on signage layers
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,

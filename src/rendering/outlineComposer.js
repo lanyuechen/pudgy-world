@@ -20,10 +20,12 @@ const OutlineShader = {
   uniforms: {
     tDiffuse: { value: null },
     tNormal: { value: null },
+    tDepth: { value: null },
     resolution: { value: new THREE.Vector2(1, 1) },
     thickness: { value: pp.thickness },
     normalThreshold: { value: pp.normalThreshold },
     colorThreshold: { value: pp.colorThreshold },
+    depthThreshold: { value: pp.depthThreshold },
     outlineColor: { value: pp.color.clone() },
     overlay: { value: pp.overlay ? 1 : 0 },
   },
@@ -37,19 +39,19 @@ const OutlineShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform sampler2D tNormal;
+    uniform sampler2D tDepth;
     uniform vec2 resolution;
     uniform float thickness;
     uniform float normalThreshold;
     uniform float colorThreshold;
+    uniform float depthThreshold;
     uniform vec3 outlineColor;
     uniform float overlay;
     varying vec2 vUv;
 
     void main() {
-      // Unity: OutlineThickness / Screen(Width, Height)
       vec2 texel = thickness / resolution;
 
-      // Roberts diagonals on world-space normals (URP Sample Buffer NormalWorldSpace)
       vec3 n0 = texture2D(tNormal, vUv + vec2( texel.x,  texel.y)).rgb;
       vec3 n1 = texture2D(tNormal, vUv + vec2(-texel.x, -texel.y)).rgb;
       vec3 n2 = texture2D(tNormal, vUv + vec2( texel.x, -texel.y)).rgb;
@@ -57,7 +59,6 @@ const OutlineShader = {
       float normalEdge = length(n0 - n1) + length(n2 - n3);
       float nMask = smoothstep(normalThreshold, 2.0, normalEdge);
 
-      // Color edges on post-SSAO BlitSource (Unity injection after SSAO)
       vec3 c0 = texture2D(tDiffuse, vUv + vec2( texel.x,  texel.y)).rgb;
       vec3 c1 = texture2D(tDiffuse, vUv + vec2(-texel.x, -texel.y)).rgb;
       vec3 c2 = texture2D(tDiffuse, vUv + vec2( texel.x, -texel.y)).rgb;
@@ -65,7 +66,14 @@ const OutlineShader = {
       float colorEdge = length(c0 - c1) + length(c2 - c3);
       float cMask = smoothstep(colorThreshold, 2.0, colorEdge);
 
-      float edge = clamp(nMask + cMask, 0.0, 1.0);
+      float d0 = texture2D(tDepth, vUv + vec2( texel.x,  texel.y)).r;
+      float d1 = texture2D(tDepth, vUv + vec2(-texel.x, -texel.y)).r;
+      float d2 = texture2D(tDepth, vUv + vec2( texel.x, -texel.y)).r;
+      float d3 = texture2D(tDepth, vUv + vec2(-texel.x,  texel.y)).r;
+      float depthEdge = abs(d0 - d1) + abs(d2 - d3);
+      float dMask = smoothstep(depthThreshold, depthThreshold * 12.0, depthEdge);
+
+      float edge = clamp(nMask + cMask + dMask, 0.0, 1.0);
 
       vec3 scene = texture2D(tDiffuse, vUv).rgb;
       vec3 outColor = mix(scene, outlineColor, edge);
@@ -126,6 +134,22 @@ function shouldSkipNormalObject(obj) {
   return false;
 }
 
+function createNormalTarget(width, height) {
+  const depthTexture = new THREE.DepthTexture(width, height);
+  depthTexture.format = THREE.DepthFormat;
+  depthTexture.type = THREE.UnsignedIntType;
+
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    type: THREE.HalfFloatType,
+    depthTexture,
+    depthBuffer: true,
+  });
+  target.texture.colorSpace = THREE.NoColorSpace;
+  return target;
+}
+
 /**
  * Color → GTAO (SSAO) → Outline PP → output.
  * Matches PC_Renderer: SSAO feature then Outlines FullScreenPass (BlitSource = post-SSAO).
@@ -150,18 +174,12 @@ export function createOutlineComposer(renderer, scene, camera) {
   gtaoPass.blendIntensity = ssao.intensity;
   composer.addPass(gtaoPass);
 
-  // HalfFloat so world normals stay in [-1, 1] like Unity Sample Buffer
-  const normalTarget = new THREE.WebGLRenderTarget(1, 1, {
-    minFilter: THREE.NearestFilter,
-    magFilter: THREE.NearestFilter,
-    type: THREE.HalfFloatType,
-    depthBuffer: true,
-  });
-  normalTarget.texture.colorSpace = THREE.NoColorSpace;
-
   const normalMaterial = createWorldNormalMaterial();
+  let normalTarget = createNormalTarget(1, 1);
   const outlinePass = new ShaderPass(OutlineShader);
+  outlinePass.enabled = pp.enabled;
   outlinePass.uniforms.tNormal.value = normalTarget.texture;
+  outlinePass.uniforms.tDepth.value = normalTarget.depthTexture;
   // Outline receives tDiffuse from GTAO output (= Unity BlitSource after SSAO)
   composer.addPass(outlinePass);
   composer.addPass(new OutputPass());
@@ -176,7 +194,10 @@ export function createOutlineComposer(renderer, scene, camera) {
     const w = Math.max(1, Math.floor(width * pixelRatio));
     const h = Math.max(1, Math.floor(height * pixelRatio));
     gtaoPass.setSize(w, h);
-    normalTarget.setSize(w, h);
+    normalTarget.dispose();
+    normalTarget = createNormalTarget(w, h);
+    outlinePass.uniforms.tNormal.value = normalTarget.texture;
+    outlinePass.uniforms.tDepth.value = normalTarget.depthTexture;
     outlinePass.uniforms.resolution.value.set(w, h);
   }
 
@@ -214,8 +235,13 @@ export function createOutlineComposer(renderer, scene, camera) {
     for (const obj of hidden) obj.visible = true;
   }
 
+  function setPpEnabled(enabled) {
+    pp.enabled = enabled;
+    outlinePass.enabled = enabled;
+  }
+
   function render() {
-    renderNormals();
+    if (pp.enabled) renderNormals();
     composer.render();
   }
 
@@ -225,5 +251,5 @@ export function createOutlineComposer(renderer, scene, camera) {
     normalMaterial.dispose();
   }
 
-  return { composer, outlinePass, gtaoPass, render, setSize, dispose };
+  return { composer, outlinePass, gtaoPass, render, setSize, setPpEnabled, dispose };
 }

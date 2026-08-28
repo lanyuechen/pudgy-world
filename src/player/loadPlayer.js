@@ -3,7 +3,7 @@ import { PLAYER } from '../config/playerConfig.js';
 import { loadModelRoot } from '../loaders/loadModel.js';
 import { configureAtlasTexture } from '../loaders/modelProfiles.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
-import { attachHullOutline } from '../rendering/hullOutline.js';
+import { attachHullOutline, stripHullOutline } from '../rendering/hullOutline.js';
 
 /** Load player mesh (config path .fbx → runtime .glb via assetUrl). */
 export async function loadPlayerModel(loadingManager) {
@@ -35,7 +35,8 @@ export async function loadPlayerModel(loadingManager) {
     const mat = base.clone();
     mat.skinning = true;
     child.material = mat;
-    attachHullOutline(child);
+    stripHullOutline(child);
+    if (!child.isSkinnedMesh) attachHullOutline(child);
 
     if (child.isSkinnedMesh && child.skeleton) {
       child.skeleton.update();
