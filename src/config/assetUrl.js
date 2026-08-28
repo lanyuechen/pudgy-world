@@ -2,13 +2,12 @@
  * Resolve a public asset path for loaders.
  *
  * Precedence:
- * 1. Absolute http(s) URL → unchanged
+ * 1. Absolute http(s) URL → unchanged (still rewrites .fbx → .glb)
  * 2. `VITE_ASSET_BASE` (CDN / object storage origin) when set
  * 3. Vite `BASE_URL` (e.g. `/pudgy-world/` on GitHub Pages)
  *
- * Accepts `/assets/...` or `assets/...`. CDN base may be
- * `https://cdn.example.com/pudgy-world/` or `https://cdn.example.com/` —
- * paths always include the `assets/...` segment.
+ * Accepts `/assets/...` or `assets/...`. Runtime models are meshopt `.glb`
+ * (see `npm run convert:glb`); `.fbx` paths in configs are rewritten.
  */
 export function getAssetBase() {
   const raw = import.meta.env.VITE_ASSET_BASE;
@@ -19,12 +18,17 @@ export function getAssetBase() {
   return base.endsWith('/') ? base : `${base}/`;
 }
 
+/** Prefer compressed GLB produced by scripts/convertFbxToGlb.mjs */
+export function toGlbPath(path) {
+  return String(path).replace(/\.fbx$/i, '.glb');
+}
+
 /**
  * @param {string} path
  * @returns {string}
  */
 export function assetUrl(path) {
-  const input = String(path);
+  const input = toGlbPath(path);
   if (/^https?:\/\//i.test(input)) return input;
   const cleaned = input.replace(/^\//, '');
   return `${getAssetBase()}${cleaned}`;

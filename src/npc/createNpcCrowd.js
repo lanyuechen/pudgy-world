@@ -8,11 +8,6 @@ const NPC_TURN_SPEED = THREE.MathUtils.degToRad(240);
 /** How far from spawn an NPC may wander (meters). */
 const DEFAULT_WANDER_RADIUS = 4.5;
 const ARRIVE_DIST = 0.35;
-/**
- * loadNpc sets fbx.rotation.y = π, so mesh faces root −Z.
- * Root yaw must be travelDirection + π; motion uses visual forward (−Z).
- */
-const MESH_YAW_OFFSET = Math.PI;
 
 function collectMeshes(root) {
   const meshes = [];
@@ -193,16 +188,16 @@ export async function createNpcCrowd({
         return;
       }
 
-      // Travel along +atan2(dx,dz); mesh faces opposite of root +Z → offset π.
-      const targetYaw = Math.atan2(dx, dz) + MESH_YAW_OFFSET;
+      // Face travel direction (+Z forward, same as player).
+      const targetYaw = Math.atan2(dx, dz);
       const delta = shortestAngleDelta(c.root.rotation.y, targetYaw);
       const step = Math.min(Math.abs(delta), NPC_TURN_SPEED * dt);
       c.root.rotation.y += Math.sign(delta) * step;
 
       const yaw = c.root.rotation.y;
       const move = Math.min(NPC_WALK_SPEED * dt, dist);
-      c.root.position.x -= Math.sin(yaw) * move;
-      c.root.position.z -= Math.cos(yaw) * move;
+      c.root.position.x += Math.sin(yaw) * move;
+      c.root.position.z += Math.cos(yaw) * move;
       snapNpcToGround(
         c.root,
         colliders,

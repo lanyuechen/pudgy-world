@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PLAYER } from '../config/playerConfig.js';
+import { sanitizeCharacterClip } from '../loaders/sanitizeCharacterClip.js';
 
 /** All clips imported from player_pudgy.fbx (Unity PlayerAnimator.controller + extra takes). */
 const CLIP_DEFS = {
@@ -105,7 +106,7 @@ export function createPlayerAnimator(modelRoot, animations = []) {
       console.warn(`[player-anim] missing clip for "${key}"`, animations.map((a) => a.name));
       continue;
     }
-    const action = mixer.clipAction(clip);
+    const action = mixer.clipAction(sanitizeCharacterClip(clip));
     action.enabled = true;
     action.setEffectiveWeight(1);
     action.setLoop(def.loop, def.loop === THREE.LoopOnce ? 1 : Infinity);

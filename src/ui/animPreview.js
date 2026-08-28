@@ -3,44 +3,12 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
+import { sanitizeCharacterClip } from '../loaders/sanitizeCharacterClip.js';
 import { loadPlayerModel } from '../player/loadPlayer.js';
 import { createLights } from '../scene/lights.js';
 import { syncToonLightDirection } from '../rendering/toonMaterial.js';
-
-/**
- * Retarget-safe clip cleanup (same rules as NPC clips):
- * drop position/scale tracks; keep valid quaternions only.
- * @param {THREE.AnimationClip} clip
- */
-function sanitizeClip(clip) {
-  const tracks = [];
-  for (const track of clip.tracks) {
-    if (track.name.endsWith('.position') || track.name.endsWith('.scale')) continue;
-    if (track.name.endsWith('.quaternion')) {
-      const v = track.values;
-      if (!v?.length || v.length % 4 !== 0) continue;
-      let valid = true;
-      for (let i = 0; i < v.length; i += 4) {
-        const len = Math.hypot(v[i], v[i + 1], v[i + 2], v[i + 3]);
-        if (len < 1e-4) {
-          valid = false;
-          break;
-        }
-        const inv = 1 / len;
-        v[i] *= inv;
-        v[i + 1] *= inv;
-        v[i + 2] *= inv;
-        v[i + 3] *= inv;
-      }
-      if (!valid) continue;
-    }
-    tracks.push(track);
-  }
-  const cleaned = new THREE.AnimationClip(clip.name, clip.duration, tracks);
-  cleaned.optimized = false;
-  return cleaned;
-}
+import { applyPreviewCanvasSize, syncPreviewCanvasSize } from './previewCanvasSize.js';
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -100,6 +68,8 @@ export function createAnimPreview(canvas, loadingManager, { statusEl = null } = 
   /** @type {Promise<void>|null} */
   let playerLoadPromise = null;
 
+  const canvasCtx = () => ({ canvas, renderer, camera, getPixelRatio });
+
   function setStatus(msg) {
     if (!statusEl) return;
     statusEl.textContent = msg || '';
@@ -107,30 +77,7 @@ export function createAnimPreview(canvas, loadingManager, { statusEl = null } = 
 
   /** @returns {boolean} true when the drawing buffer size changed */
   function syncCanvasSize() {
-    const parent = canvas.parentElement;
-    let w = 0;
-    let h = 0;
-    if (parent) {
-      const rect = parent.getBoundingClientRect();
-      w = Math.round(rect.width);
-      h = Math.round(rect.height);
-    }
-    // Absolute canvas can report 0 before the flex viewport finishes layout.
-    if (w < 2) w = Math.round(canvas.clientWidth);
-    if (h < 2) h = Math.round(canvas.clientHeight);
-    if (w < 2 || h < 2) return false;
-
-    const prevW = canvas.width;
-    const prevH = canvas.height;
-    const pr = getPixelRatio();
-    const needW = Math.max(1, Math.floor(w * pr));
-    const needH = Math.max(1, Math.floor(h * pr));
-    if (prevW === needW && prevH === needH) {
-      camera.aspect = w / h;
-      return false;
-    }
-    resize(w, h);
-    return true;
+    return syncPreviewCanvasSize(canvasCtx());
   }
 
   function framePlayer() {
@@ -146,6 +93,7 @@ export function createAnimPreview(canvas, loadingManager, { statusEl = null } = 
     const dist = Math.max(maxDim * 2.4, 4);
     center.y += size.y * 0.05;
     controls.target.copy(center);
+    // Player rest pose faces -Z; orbit from +Z so the belly faces the viewer.
     camera.position.set(center.x + dist * 0.55, center.y + dist * 0.35, center.z + dist * 0.85);
     controls.minDistance = Math.max(1, maxDim * 0.4);
     controls.maxDistance = Math.max(20, dist * 4);
@@ -178,7 +126,7 @@ export function createAnimPreview(canvas, loadingManager, { statusEl = null } = 
       return;
     }
     mixer.stopAllAction();
-    const action = mixer.clipAction(idle);
+    const action = mixer.clipAction(sanitizeCharacterClip(idle));
     action.enabled = true;
     action.setEffectiveWeight(1);
     action.reset();
@@ -227,14 +175,13 @@ export function createAnimPreview(canvas, loadingManager, { statusEl = null } = 
 
   async function loadClips(url) {
     if (clipCache.has(url)) return clipCache.get(url);
-    const fbxLoader = new FBXLoader(loadingManager);
-    const fbx = await fbxLoader.loadAsync(url);
-    const clips = (fbx.animations ?? []).map((clip) => {
+    const root = await loadModelRoot(url, loadingManager);
+    const clips = (root.animations ?? []).map((clip) => {
       const c = clip.clone();
       if (!c.name || c.name === 'CINEMA_4D_Main') {
-        c.name = url.split('/').pop()?.replace(/\.fbx$/i, '') || 'clip';
+        c.name = url.split('/').pop()?.replace(/\.(fbx|glb)$/i, '') || 'clip';
       }
-      return sanitizeClip(c);
+      return sanitizeCharacterClip(c);
     });
     clipCache.set(url, clips);
     return clips;
@@ -305,12 +252,7 @@ export function createAnimPreview(canvas, loadingManager, { statusEl = null } = 
   }
 
   function resize(width, height) {
-    const w = Math.max(1, Math.round(width));
-    const h = Math.max(1, Math.round(height));
-    renderer.setPixelRatio(getPixelRatio());
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    applyPreviewCanvasSize(canvasCtx(), Math.round(width), Math.round(height));
   }
 
   function setActive(on) {

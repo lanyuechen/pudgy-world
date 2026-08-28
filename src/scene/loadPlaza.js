@@ -1,15 +1,14 @@
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { SCENE } from '../config/sceneConfig.js';
-import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
+import { createAtlasMaterials, applyAtlasMaterials } from './atlasMaterials.js';
 
 /**
- * Load Individual_PenguPlaza_03.fbx for the Pengu Plaza scene.
+ * Load Individual_PenguPlaza_03 for the Pengu Plaza scene.
  */
 export async function loadPenguPlaza(loadingManager) {
   const materials = await createAtlasMaterials(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
-  const root = await fbxLoader.loadAsync(SCENE.assets.plazaFbx);
+  const root = await loadModelRoot(SCENE.assets.plazaFbx, loadingManager);
   root.name = 'Individual_PenguPlaza_03';
-  prepareFbxRoot(root, { ...materials, castShadow: true });
+  applyAtlasMaterials(root, { ...materials, castShadow: true });
   return root;
 }

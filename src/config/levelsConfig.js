@@ -150,7 +150,7 @@ export const LEVEL_PROPS = [
   },
 ];
 
-/** Identity transform — prepareFbxRoot already does cm→m. */
+/** Identity transform — units baked at convert (normalizeLoadedModel). */
 export const LEVEL_PROP_TRANSFORM = {
   rotation: { x: 0, y: 0, z: 0, w: 1 },
   scale: { x: 1, y: 1, z: 1 },

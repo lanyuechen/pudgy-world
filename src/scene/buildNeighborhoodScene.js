@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { createProceduralSky } from './sky.js';
 import { createLights } from './lights.js';
 import { assetUrl } from '../config/assetUrl.js';
-import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
+import { createAtlasMaterials, applyAtlasMaterials } from './atlasMaterials.js';
 import { INDIVIDUAL_NPCS } from '../config/npcConfig.js';
 import { createNpcCrowd } from '../npc/createNpcCrowd.js';
 
@@ -46,21 +46,13 @@ export async function buildNeighborhoodScene(
   onProgress?.(`Loading ${placement.name}…`, 0.2);
 
   const materials = await createAtlasMaterials(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
-  const root = await fbxLoader.loadAsync(assetUrl(placement.url));
+  const root = await loadModelRoot(assetUrl(placement.url), loadingManager);
   root.name = placement.name;
-  prepareFbxRoot(root, { ...materials, castShadow: playable });
+  applyAtlasMaterials(root, { ...materials, castShadow: playable });
 
-  // Show this entry alone at origin (ignore catalog world offset).
   const wrapper = new THREE.Group();
   wrapper.name = `${placement.name}_View`;
-  wrapper.quaternion.set(
-    placement.rotation.x,
-    placement.rotation.y,
-    placement.rotation.z,
-    placement.rotation.w,
-  );
-  wrapper.scale.set(placement.scale.x, placement.scale.y, placement.scale.z);
+  // Asset_List rotation is catalog layout only; standalone island uses baked GLB facing.
   wrapper.add(root);
   scene.add(wrapper);
 

@@ -1,11 +1,10 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { INTRO } from '../config/introConfig.js';
-import { UNITS, normalizeFbxToMeters } from '../config/units.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
 import { createProceduralSky } from './sky.js';
 import { createLights } from './lights.js';
 import { createWater } from './water.js';
-import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
+import { createAtlasMaterials, applyAtlasMaterials } from './atlasMaterials.js';
 import { loadPlayerModel } from '../player/loadPlayer.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
 import { attachHullOutline } from '../rendering/hullOutline.js';
@@ -46,9 +45,7 @@ function tintMaterials(root, colorHex) {
 }
 
 async function loadFish(loadingManager) {
-  const fbxLoader = new FBXLoader(loadingManager);
-  const fbx = await fbxLoader.loadAsync(INTRO.fishFbx);
-  normalizeFbxToMeters(fbx, { fileUnit: 'cm' });
+  const fbx = await loadModelRoot(INTRO.fishFbx, { loadingManager });
   const mat = createToonMaterial({ color: 0x7ec8ff });
   fbx.traverse((child) => {
     if (!child.isMesh) return;
@@ -87,14 +84,9 @@ export async function buildIntroScene({ loadingManager, onProgress } = {}) {
 
   onProgress?.('Loading intro berg…', 0.15);
   const materials = await createAtlasMaterials(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
-  const berg = await fbxLoader.loadAsync(INTRO.bergFbx);
-  prepareFbxRoot(berg, { ...materials, castShadow: false, skipNormalize: true });
-  const bergWrap = new THREE.Group();
-  bergWrap.name = 'Intro_Berg';
-  bergWrap.scale.setScalar(UNITS.cmToM);
-  bergWrap.add(berg);
-  scene.add(bergWrap);
+  const berg = await loadModelRoot(INTRO.bergFbx, { loadingManager });
+  applyAtlasMaterials(berg, { ...materials, castShadow: false });
+  scene.add(berg);
 
   const stage = new THREE.Group();
   stage.name = 'Intro_Stage';

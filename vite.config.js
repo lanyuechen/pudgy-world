@@ -28,9 +28,22 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       {
-        name: 'omit-assets-when-cdn',
+        name: 'production-asset-bundle',
         apply: 'build',
         closeBundle() {
+          const modelsDir = path.resolve(__dirname, 'dist/assets/models');
+          if (fs.existsSync(modelsDir)) {
+            const stripFbx = (dir) => {
+              for (const name of fs.readdirSync(dir)) {
+                const p = path.join(dir, name);
+                if (fs.statSync(p).isDirectory()) stripFbx(p);
+                else if (name.toLowerCase().endsWith('.fbx')) fs.unlinkSync(p);
+              }
+            };
+            stripFbx(modelsDir);
+            console.info('[vite] stripped dist/assets/models/**/*.fbx (runtime uses GLB)');
+          }
+
           if (!assetCdn) return;
           // Vite JS/CSS also live under dist/assets/ — only drop mirrored public models/textures.
           for (const name of ['models', 'textures']) {

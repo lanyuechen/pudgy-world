@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { CATCH_HOLD_DURATION, pickRandomFish } from '../config/fishConfig.js';
-import { normalizeFbxToMeters } from '../config/units.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
@@ -27,7 +26,6 @@ function findCatchBone(root) {
  * Spawn a caught fish on the FishingRod hand socket during HoldingFish.
  */
 export function createCatchPresenter({ playerRoot, loadingManager } = {}) {
-  const fbxLoader = new FBXLoader(loadingManager);
   /** @type {Map<string, THREE.Object3D>} */
   const cache = new Map();
   /** @type {THREE.Object3D | null} */
@@ -38,8 +36,7 @@ export function createCatchPresenter({ playerRoot, loadingManager } = {}) {
 
   async function ensureLoaded(def) {
     if (cache.has(def.id)) return cache.get(def.id);
-    const fbx = await fbxLoader.loadAsync(def.fbx);
-    normalizeFbxToMeters(fbx, { fileUnit: 'cm' });
+    const fbx = await loadModelRoot(def.fbx, { loadingManager });
     fbx.name = `Catch_${def.id}`;
     fbx.traverse((child) => {
       if (!child.isMesh) return;

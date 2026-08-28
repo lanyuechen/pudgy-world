@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { PLAYER } from '../config/playerConfig.js';
 import { NPC_ANIMS, NPC_MODELS } from '../config/npcConfig.js';
-import { normalizeFbxToMeters, inferFbxFileUnit } from '../config/units.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
+import { MODEL_PROFILE, configureAtlasTexture } from '../loaders/modelProfiles.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
 import { attachHullOutline } from '../rendering/hullOutline.js';
 
@@ -28,7 +28,6 @@ function sanitizeNpcClip(clip) {
           valid = false;
           break;
         }
-        // Normalize in place on the clone's values
         const inv = 1 / len;
         v[i] *= inv;
         v[i + 1] *= inv;
@@ -45,7 +44,7 @@ function sanitizeNpcClip(clip) {
 }
 
 /**
- * Load AnimationClips from an anim FBX (mesh discarded after extract).
+ * Load AnimationClips from an anim GLB (mesh discarded after extract).
  * @returns {Promise<THREE.AnimationClip[]>}
  */
 export async function loadNpcClips(url, loadingManager) {
@@ -53,14 +52,16 @@ export async function loadNpcClips(url, loadingManager) {
     return clipSourceCache.get(url).map((c) => sanitizeNpcClip(c.clone()));
   }
 
-  const fbxLoader = new FBXLoader(loadingManager);
-  const fbx = await fbxLoader.loadAsync(url);
-  const clips = (fbx.animations ?? []).map((clip) => {
+  const root = await loadModelRoot(url, {
+    loadingManager,
+    profile: MODEL_PROFILE.CLIP,
+  });
+  const clips = (root.animations ?? []).map((clip) => {
     const c = clip.clone();
     if (!c.name || c.name === 'CINEMA_4D_Main') {
-      c.name = url.split('/').pop()?.replace(/\.fbx$/i, '') || 'clip';
+      c.name = url.split('/').pop()?.replace(/\.(fbx|glb)$/i, '') || 'clip';
     }
-    return c;
+    return sanitizeNpcClip(c.clone());
   });
   clipSourceCache.set(url, clips);
   return clips.map((c) => sanitizeNpcClip(c.clone()));
@@ -74,18 +75,12 @@ export async function loadNpcModel(modelKey, loadingManager) {
   if (!url) throw new Error(`Unknown NPC model: ${modelKey}`);
 
   const textureLoader = new THREE.TextureLoader(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
   const [traitsMap, fbx] = await Promise.all([
     textureLoader.loadAsync(PLAYER.traitsAtlas),
-    fbxLoader.loadAsync(url),
+    loadModelRoot(url, { loadingManager, snapFeet: true }),
   ]);
 
-  traitsMap.colorSpace = THREE.SRGBColorSpace;
-  traitsMap.flipY = true;
-  traitsMap.anisotropy = 8;
-
-  const fileUnit = inferFbxFileUnit(fbx);
-  normalizeFbxToMeters(fbx, { fileUnit });
+  configureAtlasTexture(traitsMap);
 
   const base = createToonMaterial({
     map: traitsMap,
@@ -93,7 +88,6 @@ export async function loadNpcModel(modelKey, loadingManager) {
     skinning: true,
   });
 
-  // Keep authored root name (often "Root") so animation tracks bind correctly.
   const meshes = [];
   fbx.traverse((child) => {
     if (child.isMesh) meshes.push(child);
@@ -108,18 +102,7 @@ export async function loadNpcModel(modelKey, loadingManager) {
     child.material = mat;
     attachHullOutline(child);
     if (child.isSkinnedMesh && child.skeleton) child.skeleton.update();
-    const geo = child.geometry;
-    if (geo && !geo.attributes.uv && geo.attributes.uv1) {
-      geo.setAttribute('uv', geo.attributes.uv1);
-    }
   }
-
-  // Match player facing convention from Cinema4D exports.
-  fbx.rotation.y = Math.PI;
-
-  fbx.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(fbx);
-  if (!box.isEmpty()) fbx.position.y -= box.min.y;
 
   const root = new THREE.Group();
   root.name = `NPC_${modelKey}`;
@@ -171,7 +154,6 @@ export async function bindNpcAnimations(
     (k) => !k.startsWith('idle') && !k.startsWith('walk'),
   );
 
-  // Start idle; crowd locomotion triggers walk when wandering.
   const startKey = idleKey ?? keys[0];
   if (startKey) {
     const start = actions.get(startKey);
@@ -180,7 +162,6 @@ export async function bindNpcAnimations(
   }
 
   let current = startKey ?? null;
-  /** When true, update() won't auto-swap clips (crowd owns the state machine). */
   let externalControl = false;
   let nextSwapAt = 2.5 + Math.random() * 2;
   let returnIdleAt = -1;
@@ -217,7 +198,6 @@ export async function bindNpcAnimations(
     nextSwapAt -= dt;
     if (nextSwapAt > 0 || keys.length < 2) return;
 
-    // Auto-cycle only idle/emotes; walk is driven by crowd locomotion.
     const candidates = [...(idleKey ? [idleKey] : []), ...emoteKeys].filter(
       (k) => k !== current,
     );

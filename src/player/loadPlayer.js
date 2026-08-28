@@ -1,28 +1,20 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { PLAYER } from '../config/playerConfig.js';
-import { normalizeFbxToMeters } from '../config/units.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
+import { configureAtlasTexture } from '../loaders/modelProfiles.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
 import { attachHullOutline } from '../rendering/hullOutline.js';
 
-/**
- * Load Unity Player.prefab mesh (player_pudgy.fbx).
- * Already authored in meters — still runs through normalizeFbxToMeters for one unit path.
- */
+/** Load player mesh (config path .fbx → runtime .glb via assetUrl). */
 export async function loadPlayerModel(loadingManager) {
   const textureLoader = new THREE.TextureLoader(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
 
   const [traitsMap, fbx] = await Promise.all([
     textureLoader.loadAsync(PLAYER.traitsAtlas),
-    fbxLoader.loadAsync(PLAYER.fbx),
+    loadModelRoot(PLAYER.fbx, { loadingManager, snapFeet: true }),
   ]);
 
-  traitsMap.colorSpace = THREE.SRGBColorSpace;
-  traitsMap.flipY = true;
-  traitsMap.anisotropy = 8;
-
-  normalizeFbxToMeters(fbx, { fileUnit: 'm' });
+  configureAtlasTexture(traitsMap);
 
   const base = createToonMaterial({
     map: traitsMap,
@@ -48,20 +40,6 @@ export async function loadPlayerModel(loadingManager) {
     if (child.isSkinnedMesh && child.skeleton) {
       child.skeleton.update();
     }
-
-    const geo = child.geometry;
-    if (geo && !geo.attributes.uv && geo.attributes.uv1) {
-      geo.setAttribute('uv', geo.attributes.uv1);
-    }
-  }
-
-  // Face movement/+camera forward (FBX authored the opposite way in Three.js)
-  fbx.rotation.y = Math.PI;
-
-  fbx.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(fbx);
-  if (!box.isEmpty()) {
-    fbx.position.y -= box.min.y;
   }
 
   const root = new THREE.Group();

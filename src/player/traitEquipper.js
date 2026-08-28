@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import {
   FISHING_TRAIT_IDS,
   TRAIT_BY_ID,
@@ -11,9 +10,15 @@ import {
 } from '../config/fishingGearPersistence.js';
 import { CLEARS_FULL_BODY, FULL_BODY_CLEARS } from '../config/fullBodyTraits.js';
 import { PLAYER } from '../config/playerConfig.js';
-import { normalizeFbxToMeters } from '../config/units.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
+import { configureAtlasTexture } from '../loaders/modelProfiles.js';
+import {
+  getModelSourceFormat,
+  normalizeTraitMeshForBind,
+} from '../loaders/normalizeLoadedModel.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
 import { attachHullOutline } from '../rendering/hullOutline.js';
+import { resolveCharacterFacingParent } from '../loaders/sanitizeCharacterClip.js';
 
 const DEFAULT_SKIN_MESHES = new Set(['Body']);
 const DEFAULT_FACE_MESHES = new Set(['Eyes111']);
@@ -37,29 +42,24 @@ function isFishingTraitType(type) {
   return FISHING_TRAIT_TYPES.has(type);
 }
 
-/** Trait FBXs export Y-up geometry; player Body mesh local space is -90° X + 180° Y. */
-function orientTraitGeometry(mesh) {
-  mesh.geometry = mesh.geometry.clone();
-  mesh.geometry.rotateX(-Math.PI / 2);
-  mesh.geometry.rotateY(Math.PI);
+/**
+ * Bind cosmetic trait mesh to the player's Body / Eyes111 skeleton.
+ * @param {import('./modelProfiles.js').ModelSourceFormat} sourceFormat
+ */
+function bindCosmeticTraitMesh(mesh, bindReference, sourceFormat, traitGeometryBaked = false) {
+  if (!bindReference?.skeleton) {
+    throw new Error('[traits] missing bind reference skeleton');
+  }
+  normalizeTraitMeshForBind(mesh, sourceFormat, { traitGeometryBaked });
+  syncTraitMeshTransform(mesh, bindReference);
+  mesh.skeleton = bindReference.skeleton;
+  mesh.bind(bindReference.skeleton, bindReference.bindMatrix);
 }
-
 function syncTraitMeshTransform(mesh, reference) {
   if (!reference) return;
   mesh.position.copy(reference.position);
   mesh.rotation.copy(reference.rotation);
   mesh.scale.copy(reference.scale);
-}
-
-/** Bind cosmetic trait mesh to the player's Body / Eyes111 skeleton. */
-function bindCosmeticTraitMesh(mesh, bindReference) {
-  if (!bindReference?.skeleton) {
-    throw new Error('[traits] missing bind reference skeleton');
-  }
-  orientTraitGeometry(mesh);
-  syncTraitMeshTransform(mesh, bindReference);
-  mesh.skeleton = bindReference.skeleton;
-  mesh.bind(bindReference.skeleton, bindReference.bindMatrix);
 }
 
 function findBoneByName(root, name) {
@@ -219,20 +219,16 @@ function prepareTraitMesh(mesh, material) {
   mesh.castShadow = true;
   mesh.receiveShadow = false;
   mesh.frustumCulled = false;
-
-  const geo = mesh.geometry;
-  if (geo && !geo.attributes.uv && geo.attributes.uv1) {
-    geo.setAttribute('uv', geo.attributes.uv1);
-  }
 }
 
-async function loadTraitMeshes(url, fbxLoader, material) {
-  const fbx = await fbxLoader.loadAsync(url);
-  normalizeFbxToMeters(fbx, { fileUnit: 'm' });
+async function loadTraitMeshes(url, loadingManager, material) {
+  const fbx = await loadModelRoot(url, { loadingManager, role: 'trait' });
+  const sourceFormat = getModelSourceFormat(fbx) ?? 'glb';
+  const traitGeometryBaked = Boolean(fbx.userData?.pudgyTraitGeometryBaked);
 
   const meshes = collectSkinnedMeshes(fbx);
   for (const mesh of meshes) prepareTraitMesh(mesh, material);
-  return meshes;
+  return { meshes, sourceFormat, traitGeometryBaked };
 }
 
 /**
@@ -240,12 +236,9 @@ async function loadTraitMeshes(url, fbxLoader, material) {
  */
 export async function createTraitEquipper(playerFbx, loadingManager) {
   const textureLoader = new THREE.TextureLoader(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
 
   const traitsMap = await textureLoader.loadAsync(PLAYER.traitsAtlas);
-  traitsMap.colorSpace = THREE.SRGBColorSpace;
-  traitsMap.flipY = true;
-  traitsMap.anisotropy = 8;
+  configureAtlasTexture(traitsMap);
 
   const baseMaterial = createToonMaterial({
     map: traitsMap,
@@ -268,9 +261,10 @@ export async function createTraitEquipper(playerFbx, loadingManager) {
     console.warn('[traits] player Body mesh not found — traits may not render');
   }
 
+  // GLB traits mount under the same FacingRoot as the player skeleton.
   const holder = new THREE.Group();
   holder.name = 'Traits';
-  playerFbx.add(holder);
+  resolveCharacterFacingParent(playerFbx).add(holder);
 
   /** @type {Map<string, THREE.SkinnedMesh[]>} */
   const cache = new Map();
@@ -321,7 +315,11 @@ export async function createTraitEquipper(playerFbx, loadingManager) {
       console.warn('[traits] unknown trait id', id);
       return [];
     }
-    const loaded = await loadTraitMeshes(def.fbx, fbxLoader, baseMaterial);
+    const { meshes: loaded, sourceFormat, traitGeometryBaked } = await loadTraitMeshes(
+      def.fbx,
+      loadingManager,
+      baseMaterial,
+    );
     /** @type {THREE.Object3D[]} */
     const meshes = [];
 
@@ -340,7 +338,7 @@ export async function createTraitEquipper(playerFbx, loadingManager) {
       for (const mesh of loaded) {
         mesh.visible = false;
         holder.add(mesh);
-        bindCosmeticTraitMesh(mesh, bindReference);
+        bindCosmeticTraitMesh(mesh, bindReference, sourceFormat, traitGeometryBaked);
         attachHullOutline(mesh);
         meshes.push(mesh);
       }

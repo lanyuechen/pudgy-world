@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SCENE } from '../config/sceneConfig.js';
-import { normalizeFbxToMeters } from '../config/units.js';
+import { configureAtlasTexture } from '../loaders/modelProfiles.js';
 import { createToonMaterial } from '../rendering/toonMaterial.js';
 import { attachHullOutline } from '../rendering/hullOutline.js';
 
@@ -21,12 +21,8 @@ export async function createAtlasMaterials(loadingManager) {
     textureLoader.loadAsync(SCENE.assets.billboardAtlas),
   ]);
 
-  for (const map of [bergMap, billboardMap]) {
-    map.colorSpace = THREE.SRGBColorSpace;
-    map.flipY = true;
-    map.anisotropy = 8;
-    map.needsUpdate = true;
-  }
+  configureAtlasTexture(bergMap);
+  configureAtlasTexture(billboardMap);
 
   const bergMaterial = createToonMaterial({
     map: bergMap,
@@ -42,19 +38,13 @@ export async function createAtlasMaterials(loadingManager) {
 }
 
 /**
- * Apply atlas materials + hull outline, and normalize FBX to meters (cm→m).
- * Pass skipNormalize when the root will sit under a shared cm→m scale parent
- * (world-authored Neighborhood / TheBerg pieces keep cm transforms).
+ * Apply Berg/Billboard atlas materials + hull outline.
+ * Units/orientation are handled in loadModelRoot → normalizeLoadedModel.
  */
-export function prepareFbxRoot(
+export function applyAtlasMaterials(
   root,
-  { bergMaterial, billboardMaterial, castShadow = true, skipNormalize = false } = {},
+  { bergMaterial, billboardMaterial, castShadow = true } = {},
 ) {
-  // Land / Asset_List FBXs are authored in centimeters
-  if (!skipNormalize) {
-    normalizeFbxToMeters(root, { fileUnit: 'cm' });
-  }
-
   const meshes = [];
   root.traverse((child) => {
     if (child.isMesh) meshes.push(child);
@@ -67,11 +57,6 @@ export function prepareFbxRoot(
     const base = (usesBillboardAtlas(child) ? billboardMaterial : bergMaterial).clone();
     child.material = base;
     attachHullOutline(child);
-
-    const geo = child.geometry;
-    if (geo && !geo.attributes.uv && geo.attributes.uv1) {
-      geo.setAttribute('uv', geo.attributes.uv1);
-    }
   }
 
   return root;

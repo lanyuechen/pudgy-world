@@ -1,17 +1,16 @@
 import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import assetListData from '../config/assetListPlacements.json';
 import { assetUrl } from '../config/assetUrl.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
 import { ASSET_LOAD_CONCURRENCY, mapPool } from '../util/mapPool.js';
-import { createAtlasMaterials, prepareFbxRoot } from './atlasMaterials.js';
+import { createAtlasMaterials, applyAtlasMaterials } from './atlasMaterials.js';
 
 /**
- * Load every FBX placement from Asset_List.unity under a Towns group.
+ * Load every mesh placement from Asset_List.unity under a Towns group.
  * Only runs when the Asset_List catalog scene is opened.
  */
 export async function loadAssetListTowns(loadingManager, onProgress) {
   const materials = await createAtlasMaterials(loadingManager);
-  const fbxLoader = new FBXLoader(loadingManager);
   const towns = new THREE.Group();
   towns.name = 'Towns';
 
@@ -25,10 +24,9 @@ export async function loadAssetListTowns(loadingManager, onProgress) {
     );
 
     try {
-      const root = await fbxLoader.loadAsync(assetUrl(placement.url));
+      const root = await loadModelRoot(assetUrl(placement.url), loadingManager);
       root.name = placement.name;
-      // File scale is normalized to meters inside prepareFbxRoot; Unity instance scale stays on wrapper.
-      prepareFbxRoot(root, { ...materials, castShadow: false });
+      applyAtlasMaterials(root, { ...materials, castShadow: false });
 
       const wrapper = new THREE.Group();
       wrapper.name = `${placement.name}_Instance`;

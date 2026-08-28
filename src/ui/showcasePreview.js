@@ -3,13 +3,14 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { INTRO } from '../config/introConfig.js';
 import { assetUrl } from '../config/assetUrl.js';
+import { loadModelRoot } from '../loaders/loadModel.js';
 import { loadNpcModel } from '../npc/loadNpc.js';
-import { createAtlasMaterials, prepareFbxRoot } from '../scene/atlasMaterials.js';
+import { createAtlasMaterials, applyAtlasMaterials } from '../scene/atlasMaterials.js';
 import { createLights } from '../scene/lights.js';
 import { syncToonLightDirection } from '../rendering/toonMaterial.js';
+import { applyPreviewCanvasSize, syncPreviewCanvasSize } from './previewCanvasSize.js';
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -55,6 +56,9 @@ export function createShowcasePreview(canvas, loadingManager) {
   /** @type {Awaited<ReturnType<typeof createAtlasMaterials>>|null} */
   let atlasMaterials = null;
   let busy = false;
+  let previewFrontFacing = false;
+
+  const canvasCtx = () => ({ canvas, renderer, camera, getPixelRatio });
 
   controls.addEventListener('start', () => {
     interacting = true;
@@ -95,9 +99,10 @@ export function createShowcasePreview(canvas, loadingManager) {
     }
     controls.autoRotate = false;
     idleElapsed = 0;
+    previewFrontFacing = false;
   }
 
-  function frameObject(object) {
+  function frameObject(object, { frontFacing = false } = {}) {
     object.updateWorldMatrix(true, true);
     const box = new THREE.Box3().setFromObject(object);
     const size = new THREE.Vector3();
@@ -109,10 +114,12 @@ export function createShowcasePreview(canvas, loadingManager) {
     const dist = Math.max(maxDim * 1.8, 2.5);
     center.y += size.y * 0.05;
 
+    // +Z is character forward (MODEL_SPEC); orbit from -Z for NPC/player previews.
+    const zSign = frontFacing ? -1 : 1;
     camera.position.set(
       center.x + dist * 0.55,
       center.y + dist * 0.28,
-      center.z + dist * 0.75,
+      center.z + zSign * dist * 0.75,
     );
     controls.target.copy(center);
     controls.minDistance = Math.max(0.4, maxDim * 0.25);
@@ -129,26 +136,15 @@ export function createShowcasePreview(canvas, loadingManager) {
     }
   }
 
-  async function loadFbxRoot(url, name, placement = null) {
+  /** GLB is baked at convert — catalog Asset_List rotation is layout-only, not model facing. */
+  async function loadPreviewRoot(url, name) {
     const materials = await ensureAtlasMaterials();
-    const loader = new FBXLoader(loadingManager);
-    const root = await loader.loadAsync(assetUrl(url));
+    const root = await loadModelRoot(assetUrl(url), loadingManager);
     root.name = name;
-    prepareFbxRoot(root, { ...materials, castShadow: true });
+    applyAtlasMaterials(root, { ...materials, castShadow: true });
 
     const wrapper = new THREE.Group();
     wrapper.name = `${name}_Showcase`;
-    if (placement?.rotation) {
-      wrapper.quaternion.set(
-        placement.rotation.x,
-        placement.rotation.y,
-        placement.rotation.z,
-        placement.rotation.w,
-      );
-    }
-    if (placement?.scale) {
-      wrapper.scale.set(placement.scale.x, placement.scale.y, placement.scale.z);
-    }
     wrapper.add(root);
 
     const box = new THREE.Box3().setFromObject(root);
@@ -169,7 +165,6 @@ export function createShowcasePreview(canvas, loadingManager) {
     try {
       if (option.isNpcPreview && option.modelKey) {
         const { root, fbx } = await loadNpcModel(option.modelKey, loadingManager);
-        root.rotation.y = Math.PI;
         if (fbx?.animations?.length) {
           const mixer = new THREE.AnimationMixer(fbx);
           const clip = fbx.animations.find((a) => /idle/i.test(a.name)) ?? fbx.animations[0];
@@ -184,9 +179,9 @@ export function createShowcasePreview(canvas, loadingManager) {
       } else if (option.isIntro || option.isTheBerg) {
         const bergUrl =
           option.bergMap?.assets?.[0]?.url ?? INTRO.bergFbx;
-        contentRoot = await loadFbxRoot(bergUrl, option.label || 'Preview');
+        contentRoot = await loadPreviewRoot(bergUrl, option.label || 'Preview');
       } else if (option.placement) {
-        contentRoot = await loadFbxRoot(option.placement.url, option.placement.name, option.placement);
+        contentRoot = await loadPreviewRoot(option.placement.url, option.placement.name);
       } else {
         busy = false;
         return;
@@ -201,7 +196,9 @@ export function createShowcasePreview(canvas, loadingManager) {
         });
         sun = lights.sun;
       }
-      frameObject(contentRoot);
+      previewFrontFacing = Boolean(option.isNpcPreview);
+      syncPreviewCanvasSize(canvasCtx());
+      frameObject(contentRoot, { frontFacing: previewFrontFacing });
       syncToonLightDirection(contentRoot, sun);
       resetAutoRotateIdle();
       renderer.render(scene, camera);
@@ -214,6 +211,7 @@ export function createShowcasePreview(canvas, loadingManager) {
   }
 
   function update(dt) {
+    syncPreviewCanvasSize(canvasCtx());
     for (const mixer of mixers) mixer.update(dt);
     if (!interacting && contentRoot) {
       idleElapsed += dt;
@@ -227,12 +225,7 @@ export function createShowcasePreview(canvas, loadingManager) {
   }
 
   function resize(width, height) {
-    if (width <= 0 || height <= 0) return;
-    renderer.setPixelRatio(getPixelRatio());
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    if (contentRoot) frameObject(contentRoot);
+    applyPreviewCanvasSize(canvasCtx(), width, height);
   }
 
   function dispose() {

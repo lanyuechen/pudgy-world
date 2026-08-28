@@ -1,6 +1,6 @@
 # Assets 目录结构与 Web 移植状态
 
-> 生成日期：2026-08-25  
+> 生成日期：2026-08-25（2026-08-28 更新 GLB 管线）  
 > Unity 资源根目录：`Assets/`  
 > Web 运行时资源：`public/assets/`  
 > 逻辑代码：`src/`（Three.js + Vite）
@@ -14,12 +14,14 @@
 | 位置 | 体量（约） | 角色 |
 |------|------------|------|
 | `Assets/` | ~2.9GB+（主体在 `PudgyWorldAssets`） | Unity 工程全部资源与逻辑 |
-| `public/assets/` | 运行时精选拷贝（约 449 FBX + 4 PNG） | 浏览器可加载的静态资源 |
+| `public/assets/` | 运行时精选拷贝（GLB + FBX 源 + 贴图） | 浏览器可加载的静态资源 |
 | `src/` | JS 模块 | 用 Three.js **重写/近似** Unity 行为，而非直接跑 C# |
 
 **原则：** Web 端不是整包镜像 `Assets/`，而是按玩法需要挑模型/贴图，并在 JS 里复现渲染、移动、钓鱼、换装等。
 
-**数量对比（FBX，不含 `.meta`）：**
+**运行时模型格式：** 浏览器加载 **GLB**（`assetUrl()` 将配置里的 `.fbx` 改写为 `.glb`）。`public/assets/models/**/*.fbx` 保留作 `npm run convert:glb` 源；生产 `dist` 仅发布 GLB（见 `docs/MODEL_SPEC.md`）。
+
+**数量对比（FBX 源文件，不含 `.meta`）：**
 
 | 范围 | FBX 约数 |
 |------|----------|
@@ -157,6 +159,24 @@ Unity `.mat` 未原样移植；Web 用 toon + atlas。
 
 ---
 
+## 4.1 GLB 转换与单位（`MODEL_SPEC` Phase 2）
+
+| Profile | 路径 | convert 烘焙 | 运行时 |
+|---------|------|--------------|--------|
+| `character` | `player/`、`npcs/` | FacingRoot、trait 几何、动画 track 清理 | `normalizeLoadedModel` 校验 |
+| `environment` | `neighborhoods/`、`individuals/`、`extras/`、`special/` | cm→m（根 scale 0.01） | 不再 `scaleEnvironmentCmToM` |
+| `prop` | `fish/`、`levels/` | cm→m（bbox > 20 启发式） | `normalizeLoadedModel` |
+| `clip` | `animations/` | 动画 track 清理 | clip 加载 |
+
+```bash
+npm run convert:glb              # 全量 FBX → GLB+meshopt
+npm run convert:glb -- --dir individuals --force
+```
+
+场景材质：`loadModelRoot` → `normalizeLoadedModel` → `applyAtlasMaterials`（原 `prepareFbxRoot`，只管 atlas + outline）。
+
+---
+
 ## 4. Web 资源树（`public/assets/`）
 
 ```
@@ -235,7 +255,7 @@ public/assets/
 ## 8. 备注
 
 1. **`.meta` 文件**：Unity 专用；Web / Three.js **不读取**。  
-2. **单位**：Land / Asset_List 类 FBX 多为 cm，加载时 `normalizeFbxToMeters`（cm→m）。  
+2. **单位**：Land / Asset_List 类 FBX 源为 cm；`convert:glb` 写入米制 GLB（`pudgyUnitsBaked`），运行时不再父节点 `cm→m`。FBX 开发兜底仍走 `normalizeFbxToMeters`。  
 3. **版本**：Web 中 Neighborhood/Individual 多为 `_02`；Unity 源树常有 `_03` 更新，未全部替换。  
 4. **FBX 6100**：部分早期 Intro 资源曾无法被 Three.js 解析，故 Intro 采用降级方案。  
 5. 本文随仓库演进可能过期；以 `public/assets` 与 `src/config` 实际文件为准。

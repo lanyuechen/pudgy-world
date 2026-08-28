@@ -92,6 +92,7 @@ const showcasePanel = createConfigSectionPanel(showcasePanelEl, {
     const option = optionById.get(optionId);
     if (!option) return;
     showcaseSelectedId = optionId;
+    resizePreviewViewport();
     showcasePreview?.previewOption(option);
   },
 });
@@ -268,11 +269,15 @@ function applyConfigTab(tab, { force = false } = {}) {
   if (tab === 'showcase') {
     applyShowcaseMode();
     showcasePanel.updateLayout();
-    resizePreviewViewport();
-    if (showcaseSelectedId) {
-      const option = optionById.get(showcaseSelectedId);
-      if (option) showcasePreview?.previewOption(option);
-    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        resizePreviewViewport();
+        if (showcaseSelectedId) {
+          const option = optionById.get(showcaseSelectedId);
+          if (option) showcasePreview?.previewOption(option);
+        }
+      });
+    });
     return;
   }
 
