@@ -33,6 +33,12 @@ export const CONTROL = {
   pitchMin: -20,
   pitchMax: 60,
   camSmoothDamp: 0.28,
+  /** Orbit pivot follow — filters Rapier trimesh feet jitter (lower = smoother). */
+  camPivotSmoothDamp: 0.1,
+  /** Visual mesh follow physics feet — grounded walk (lower = smoother). */
+  playerDisplaySmoothDamp: 0.08,
+  /** Visual follow while jumping / falling — keep snappy. */
+  playerDisplaySmoothDampAir: 0.03,
   springBackSpeed: 1.6,
   boomPullSpeed: 4.0,
   cameraOffsetY: 1.2,

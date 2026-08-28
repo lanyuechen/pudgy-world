@@ -1,9 +1,34 @@
 import * as THREE from 'three';
 import { CONTROL, PLAYER } from '../config/playerConfig.js';
 
+function smoothDampVec3(current, target, velocity, smoothTime, dt) {
+  const st = Math.max(0.0001, smoothTime);
+  const omega = 2 / st;
+  const x = omega * dt;
+  const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+
+  const changeX = current.x - target.x;
+  const changeY = current.y - target.y;
+  const changeZ = current.z - target.z;
+
+  const tempX = (velocity.x + omega * changeX) * dt;
+  const tempY = (velocity.y + omega * changeY) * dt;
+  const tempZ = (velocity.z + omega * changeZ) * dt;
+
+  velocity.x = (velocity.x - omega * tempX) * exp;
+  velocity.y = (velocity.y - omega * tempY) * exp;
+  velocity.z = (velocity.z - omega * tempZ) * exp;
+
+  current.x = target.x + (changeX + tempX) * exp;
+  current.y = target.y + (changeY + tempY) * exp;
+  current.z = target.z + (changeZ + tempZ) * exp;
+}
+
 /**
  * Character controller — docs §3 / §6.1
  * Fixed 50Hz. Simple jump: grounded + one Space edge → one takeoff.
+ *
+ * Physics feet live in `_physicsFeet`; `character.position` is the smoothed display pose.
  */
 export function createCharacterController(character, { physics } = {}) {
   const velocity = new THREE.Vector3();
@@ -18,6 +43,8 @@ export function createCharacterController(character, { physics } = {}) {
   const _right = new THREE.Vector3();
   const _worldMove = new THREE.Vector3();
   const _feet = { x: 0, y: 0, z: 0 };
+  const _physicsFeet = new THREE.Vector3().copy(character.position);
+  const _displayVel = new THREE.Vector3();
 
   function yawToWorldForward(yawRad, out) {
     out.set(Math.sin(yawRad), 0, Math.cos(yawRad));
@@ -37,7 +64,7 @@ export function createCharacterController(character, { physics } = {}) {
   }
 
   function rayGrounded() {
-    if (!physics) return character.position.y <= 0.05;
+    if (!physics) return _physicsFeet.y <= 0.05;
     const hit = physics.castGround(CONTROL.capsuleCenterY + 0.4);
     if (!hit) return false;
     // Walk / props: enough slack for trimesh noise, not for jump landing
@@ -52,22 +79,37 @@ export function createCharacterController(character, { physics } = {}) {
     return hit.toi - CONTROL.capsuleCenterY <= CONTROL.skinWidth + 0.03;
   }
 
+  function snapDisplayPosition() {
+    character.position.copy(_physicsFeet);
+    _displayVel.set(0, 0, 0);
+  }
+
   function snapToGroundIfNeeded() {
     if (!physics) return false;
-    physics.setPlayerFeetPosition(
-      character.position.x,
-      character.position.y,
-      character.position.z,
-    );
+    physics.setPlayerFeetPosition(_physicsFeet.x, _physicsFeet.y, _physicsFeet.z);
     const hit = physics.castGround(300);
     if (!hit) return false;
     const y = hit.pointY + CONTROL.skinWidth;
-    character.position.y = y;
-    physics.setPlayerFeetPosition(character.position.x, y, character.position.z);
+    _physicsFeet.set(_physicsFeet.x, y, _physicsFeet.z);
+    physics.setPlayerFeetPosition(_physicsFeet.x, y, _physicsFeet.z);
+    snapDisplayPosition();
     velocity.set(0, 0, 0);
     airborne = false;
     grounded = true;
     return true;
+  }
+
+  /**
+   * Smooth display mesh toward physics feet (call once per render frame).
+   * @param {number} dt
+   * @param {{ grounded?: boolean, jumpStarted?: boolean }} [opts]
+   */
+  function updateDisplayPosition(dt, { grounded: isGrounded = true, jumpStarted = false } = {}) {
+    const smoothTime =
+      jumpStarted || !isGrounded
+        ? (CONTROL.playerDisplaySmoothDampAir ?? 0.03)
+        : (CONTROL.playerDisplaySmoothDamp ?? 0.08);
+    smoothDampVec3(character.position, _physicsFeet, _displayVel, smoothTime, dt);
   }
 
   /**
@@ -103,11 +145,7 @@ export function createCharacterController(character, { physics } = {}) {
     }
 
     if (physics) {
-      physics.setPlayerFeetPosition(
-        character.position.x,
-        character.position.y,
-        character.position.z,
-      );
+      physics.setPlayerFeetPosition(_physicsFeet.x, _physicsFeet.y, _physicsFeet.z);
     }
 
     // --- Jump (simple): only on ground, only when caller passes jump once ---
@@ -149,7 +187,7 @@ export function createCharacterController(character, { physics } = {}) {
         allowSnap: !airborne,
       });
       physics.getPlayerFeetPosition(_feet);
-      character.position.set(_feet.x, _feet.y, _feet.z);
+      _physicsFeet.set(_feet.x, _feet.y, _feet.z);
 
       if (airborne) {
         if (velocity.y <= 0 && (moved.grounded || rayAlmostTouching())) {
@@ -167,27 +205,27 @@ export function createCharacterController(character, { physics } = {}) {
         }
       }
     } else {
-      character.position.x += dx;
-      character.position.y += dy;
-      character.position.z += dz;
-      if (airborne && velocity.y <= 0 && character.position.y <= 0.05) {
+      _physicsFeet.x += dx;
+      _physicsFeet.y += dy;
+      _physicsFeet.z += dz;
+      if (airborne && velocity.y <= 0 && _physicsFeet.y <= 0.05) {
         airborne = false;
         grounded = true;
         velocity.y = 0;
-        character.position.y = 0;
+        _physicsFeet.y = 0;
       }
     }
 
-    if (character.position.y < -40) {
-      character.position.set(PLAYER.spawn.x, PLAYER.spawn.y, PLAYER.spawn.z);
+    if (_physicsFeet.y < -40) {
+      _physicsFeet.set(PLAYER.spawn.x, PLAYER.spawn.y, PLAYER.spawn.z);
       velocity.set(0, 0, 0);
       airborne = false;
       grounded = true;
       if (physics) {
         physics.createPlayerCapsule(
-          character.position.x,
-          character.position.y,
-          character.position.z,
+          _physicsFeet.x,
+          _physicsFeet.y,
+          _physicsFeet.z,
         );
       }
       snapToGroundIfNeeded();
@@ -211,6 +249,9 @@ export function createCharacterController(character, { physics } = {}) {
   return {
     fixedTick,
     snapToGroundIfNeeded,
+    snapDisplayPosition,
+    updateDisplayPosition,
+    getPhysicsFeet: () => _physicsFeet,
     get isGrounded() {
       return grounded && !airborne;
     },

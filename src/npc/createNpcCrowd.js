@@ -188,16 +188,16 @@ export async function createNpcCrowd({
         return;
       }
 
-      // Face travel direction (+Z forward, same as player).
-      const targetYaw = Math.atan2(dx, dz);
+      // FacingRoot(Y180): rotation.y=0 faces -Z; add π so the mesh faces travel direction.
+      const travelYaw = Math.atan2(dx, dz);
+      const targetYaw = travelYaw + Math.PI;
       const delta = shortestAngleDelta(c.root.rotation.y, targetYaw);
       const step = Math.min(Math.abs(delta), NPC_TURN_SPEED * dt);
       c.root.rotation.y += Math.sign(delta) * step;
 
-      const yaw = c.root.rotation.y;
       const move = Math.min(NPC_WALK_SPEED * dt, dist);
-      c.root.position.x += Math.sin(yaw) * move;
-      c.root.position.z += Math.cos(yaw) * move;
+      c.root.position.x += Math.sin(travelYaw) * move;
+      c.root.position.z += Math.cos(travelYaw) * move;
       snapNpcToGround(
         c.root,
         colliders,

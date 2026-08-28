@@ -34,6 +34,7 @@ export function createSpringArmCamera(camera) {
   const _final = new THREE.Vector3();
   const _dir = new THREE.Vector3();
   const _vel = new THREE.Vector3();
+  const _pivotVel = new THREE.Vector3();
   const _euler = new THREE.Euler(0, 0, 0, 'YXZ');
   const raycaster = new THREE.Raycaster();
   let pivotReady = false;
@@ -58,6 +59,7 @@ export function createSpringArmCamera(camera) {
     realDistance = targetDistance;
     boomSticky = null;
     _vel.set(0, 0, 0);
+    _pivotVel.set(0, 0, 0);
     pivotReady = false;
     configMode = null;
     savedPlayView = null;
@@ -95,6 +97,7 @@ export function createSpringArmCamera(camera) {
     softPitch = snap.softPitch;
     boomSticky = null;
     _vel.set(0, 0, 0);
+    _pivotVel.set(0, 0, 0);
     pivotReady = false;
   }
 
@@ -427,11 +430,16 @@ export function createSpringArmCamera(camera) {
     );
     if (!pivotReady) {
       _pivotSmooth.copy(_pivot);
+      _pivotVel.set(0, 0, 0);
       pivotReady = true;
     } else {
-      _pivotSmooth.x = _pivot.x;
-      _pivotSmooth.z = _pivot.z;
-      _pivotSmooth.y += (_pivot.y - _pivotSmooth.y) * Math.min(1, 12 * dt);
+      smoothDampVec3(
+        _pivotSmooth,
+        _pivot,
+        _pivotVel,
+        CONTROL.camPivotSmoothDamp ?? 0.1,
+        dt,
+      );
     }
 
     const hitDist = playLocked ? null : raycastBoom(_pivotSmooth);

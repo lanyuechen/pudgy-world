@@ -72,9 +72,10 @@ export async function createPlayerSystem({
   // docs: CharacterFixedTick + CameraLateUpdate (new control layer)
   const controller = createCharacterController(playerRoot, { physics });
   if (!controller.snapToGroundIfNeeded()) {
-    console.warn('[player] ground snap failed at', playerRoot.position.toArray());
-    playerRoot.position.y = 1;
-    physics.setPlayerFeetPosition(playerRoot.position.x, 1, playerRoot.position.z);
+    console.warn('[player] ground snap failed at', controller.getPhysicsFeet().toArray());
+    controller.getPhysicsFeet().set(spawn.x, 1, spawn.z);
+    physics.setPlayerFeetPosition(spawn.x, 1, spawn.z);
+    controller.snapDisplayPosition();
   }
 
   if (fishingHoles) {
@@ -315,6 +316,7 @@ export async function createPlayerSystem({
       }
 
       animator.update(dt, { fishingMode: true });
+      controller.updateDisplayPosition(dt, { grounded: lastStatus.grounded });
       playerCamera.lateUpdate(dt, frame, {});
       return;
     }
@@ -363,6 +365,10 @@ export async function createPlayerSystem({
     };
     lastStatus = status;
 
+    controller.updateDisplayPosition(dt, {
+      grounded: status.grounded,
+      jumpStarted: status.jumpStarted,
+    });
     animator.update(dt, status);
     slideFx.update(dt, status);
     snowballs.update(dt);
