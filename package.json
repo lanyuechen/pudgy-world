@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.20.0",
-    "three": "^0.170.0"
+    "three": "^0.170.0",
+    "yuka": "^0.7.8"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.4.2",

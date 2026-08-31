@@ -56,14 +56,16 @@ function meshToWorldTrimesh(mesh, _v = new THREE.Vector3()) {
 }
 
 /**
- * Rapier world + static scene colliders + kinematic player capsule + character controller.
- * Locomotion forces stay in characterController; Rapier resolves collisions like Unity PhysX.
+ * Rapier world + static scene colliders + kinematic capsules + character controller.
+ * Supports multiple agents (player + enemies). Locomotion forces stay in callers.
  */
 export function createPhysicsWorld() {
   const gravityY = PLAYER.gravity ?? -9.81;
   const world = new RAPIER.World({ x: 0, y: gravityY, z: 0 });
   const staticBodies = [];
   const _v = new THREE.Vector3();
+  /** @type {Map<string, { body: any, collider: any }>} */
+  const agents = new Map();
 
   const offset = PLAYER.collisionSkin ?? 0.02;
   const characterController = world.createCharacterController(offset);
@@ -80,8 +82,9 @@ export function createPhysicsWorld() {
   // Modest snap — large values fight autostep on low props.
   characterController.enableSnapToGround(PLAYER.characterSnapDist ?? 0.35);
 
-  let playerBody = null;
-  let playerCollider = null;
+  function getAgent(id) {
+    return agents.get(id) ?? null;
+  }
 
   function addStaticMeshes(meshes) {
     let added = 0;
@@ -109,45 +112,49 @@ export function createPhysicsWorld() {
   /**
    * Create kinematic capsule. Body translation = capsule center
    * (= feet Y + PLAYER.centerY).
+   * @param {string} id
    */
-  function createPlayerCapsule(feetX, feetY, feetZ) {
-    if (playerBody) {
-      world.removeRigidBody(playerBody);
-      playerBody = null;
-      playerCollider = null;
-    }
+  function createCapsule(id, feetX, feetY, feetZ) {
+    removeCapsule(id);
 
     const halfH = capsuleHalfHeight();
     const cx = feetX;
     const cy = feetY + PLAYER.centerY;
     const cz = feetZ;
 
-    playerBody = world.createRigidBody(
+    const body = world.createRigidBody(
       RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(cx, cy, cz),
     );
-    playerCollider = world.createCollider(
+    const collider = world.createCollider(
       RAPIER.ColliderDesc.capsule(halfH, PLAYER.radius)
         .setFriction(0)
         .setRestitution(0),
-      playerBody,
+      body,
     );
-    return { playerBody, playerCollider };
+    agents.set(id, { body, collider });
+    return { body, collider };
   }
 
-  function setPlayerFeetPosition(x, y, z) {
-    if (!playerBody) return;
-    playerBody.setNextKinematicTranslation({
-      x,
-      y: y + PLAYER.centerY,
-      z,
-    });
+  function removeCapsule(id) {
+    const agent = agents.get(id);
+    if (!agent) return;
+    world.removeRigidBody(agent.body);
+    agents.delete(id);
+  }
+
+  function setFeetPosition(id, x, y, z) {
+    const agent = agents.get(id);
+    if (!agent) return;
+    const cy = y + PLAYER.centerY;
+    agent.body.setNextKinematicTranslation({ x, y: cy, z });
     // Apply immediately so casts see the new pose before next step.
-    playerBody.setTranslation({ x, y: y + PLAYER.centerY, z }, true);
+    agent.body.setTranslation({ x, y: cy, z }, true);
   }
 
-  function getPlayerFeetPosition(out = { x: 0, y: 0, z: 0 }) {
-    if (!playerBody) return out;
-    const t = playerBody.translation();
+  function getFeetPosition(id, out = { x: 0, y: 0, z: 0 }) {
+    const agent = agents.get(id);
+    if (!agent) return out;
+    const t = agent.body.translation();
     out.x = t.x;
     out.y = t.y - PLAYER.centerY;
     out.z = t.z;
@@ -155,11 +162,13 @@ export function createPhysicsWorld() {
   }
 
   /**
-   * Move the capsule by desired world delta.
+   * Move a capsule by desired world delta.
+   * @param {string} id
    * @param {{ allowSnap?: boolean }} [opts] allowSnap false disables snap-to-ground (for jumps)
    */
-  function movePlayer(dx, dy, dz, opts = {}) {
-    if (!playerCollider || !playerBody) {
+  function moveCapsule(id, dx, dy, dz, opts = {}) {
+    const agent = agents.get(id);
+    if (!agent) {
       return { x: dx, y: dy, z: dz, grounded: false };
     }
 
@@ -170,27 +179,28 @@ export function createPhysicsWorld() {
       characterController.disableSnapToGround();
     }
 
-    characterController.computeColliderMovement(playerCollider, { x: dx, y: dy, z: dz });
+    characterController.computeColliderMovement(agent.collider, { x: dx, y: dy, z: dz });
     const m = characterController.computedMovement();
     const grounded = characterController.computedGrounded();
 
-    const t = playerBody.translation();
+    const t = agent.body.translation();
     const next = { x: t.x + m.x, y: t.y + m.y, z: t.z + m.z };
-    playerBody.setNextKinematicTranslation(next);
+    agent.body.setNextKinematicTranslation(next);
+    // Apply immediately so getFeetPosition works before the next world.step().
+    agent.body.setTranslation(next, true);
+    if (opts.step !== false) world.step();
+    return { x: m.x, y: m.y, z: m.z, grounded };
+  }
+
+  function stepSimulation() {
     world.step();
-    const after = playerBody.translation();
-    return {
-      x: after.x - t.x,
-      y: after.y - t.y,
-      z: after.z - t.z,
-      grounded,
-    };
   }
 
   /** Downward ray from capsule center for spawn snap / fallback grounded. */
-  function castGround(maxDist = 300) {
-    if (!playerBody) return null;
-    const t = playerBody.translation();
+  function castGroundFor(id, maxDist = 300) {
+    const a = agents.get(id);
+    if (!a) return null;
+    const t = a.body.translation();
     const origin = { x: t.x, y: t.y, z: t.z };
     const dir = { x: 0, y: -1, z: 0 };
     const ray = new RAPIER.Ray(origin, dir);
@@ -200,7 +210,7 @@ export function createPhysicsWorld() {
       true,
       undefined,
       undefined,
-      playerCollider,
+      a.collider,
     );
     if (!hit) return null;
     return {
@@ -210,10 +220,30 @@ export function createPhysicsWorld() {
     };
   }
 
+  // --- Player-compatible wrappers (existing call sites) ---
+  function createPlayerCapsule(feetX, feetY, feetZ) {
+    return createCapsule('player', feetX, feetY, feetZ);
+  }
+
+  function setPlayerFeetPosition(x, y, z) {
+    setFeetPosition('player', x, y, z);
+  }
+
+  function getPlayerFeetPosition(out = { x: 0, y: 0, z: 0 }) {
+    return getFeetPosition('player', out);
+  }
+
+  function movePlayer(dx, dy, dz, opts = {}) {
+    return moveCapsule('player', dx, dy, dz, opts);
+  }
+
+  function castGround(maxDist = 300) {
+    return castGroundFor('player', maxDist);
+  }
+
   function dispose() {
     world.free();
-    playerBody = null;
-    playerCollider = null;
+    agents.clear();
     staticBodies.length = 0;
   }
 
@@ -221,17 +251,25 @@ export function createPhysicsWorld() {
     world,
     characterController,
     addStaticMeshes,
+    createCapsule,
+    removeCapsule,
+    setFeetPosition,
+    getFeetPosition,
+    moveCapsule,
+    stepSimulation,
+    castGround,
+    castGroundFor,
     createPlayerCapsule,
     setPlayerFeetPosition,
     getPlayerFeetPosition,
     movePlayer,
-    castGround,
     dispose,
+    getAgent,
     get playerBody() {
-      return playerBody;
+      return agents.get('player')?.body ?? null;
     },
     get playerCollider() {
-      return playerCollider;
+      return agents.get('player')?.collider ?? null;
     },
   };
 }

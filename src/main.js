@@ -4,12 +4,10 @@ import { buildPenguPlazaScene } from './scene/buildScene.js';
 import { buildNeighborhoodScene } from './scene/buildNeighborhoodScene.js';
 import { buildAssetListScene } from './scene/buildAssetListScene.js';
 import { buildTheBergScene } from './scene/buildTheBergScene.js';
-import { buildIntroScene } from './scene/buildIntroScene.js';
 import { buildNpcPreviewScene } from './scene/buildNpcPreviewScene.js';
 import { createExploreCamera } from './camera/exploreCamera.js';
 import { createPlayerSystem } from './player/createPlayerSystem.js';
 import { getSceneOptions, DEFAULT_SCENE_ID, THE_BERG_SCENE_ID } from './config/sceneOptions.js';
-import { INTRO } from './config/introConfig.js';
 import { remapFbxTextureUrl } from './config/assetUrl.js';
 import { createOutlineComposer } from './rendering/outlineComposer.js';
 import { updateHullOutlineViewport } from './rendering/hullOutline.js';
@@ -18,6 +16,10 @@ import { createTraitCustomizer } from './ui/traitCustomizer.js';
 import { createConfigSectionPanel } from './ui/configSectionPanel.js';
 import { createShowcasePreview } from './ui/showcasePreview.js';
 import { createAnimPreview } from './ui/animPreview.js';
+import { createPlayerPortrait } from './ui/playerPortrait.js';
+import { createGameSettingsPanel } from './ui/gameSettingsPanel.js';
+import { createSkillInfoPanel } from './ui/skillInfoPanel.js';
+import { applyGameSettings, loadGameSettings } from './config/gameSettings.js';
 import { getAnimOptions } from './config/animConfig.js';
 import { frameExploreInRightHalf, getSceneBounds, setRightHalfViewOffset } from './ui/configCameraFraming.js';
 import {
@@ -31,7 +33,6 @@ const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
 const { groups: animGroups, byId: animById } = getAnimOptions();
 
 const SHOWCASE_GROUP_LABELS = {
-  intro: 'Intro',
   neighborhoods: 'World Map',
   npcs: 'NPCs',
   levels: 'Levels',
@@ -51,14 +52,20 @@ const animStatusEl = document.getElementById('anim-preview-status');
 const showcaseViewportEl = document.getElementById('showcase-viewport');
 const hintEl = document.getElementById('hint');
 const configToggle = document.getElementById('config-toggle');
+const configToggleAvatarCanvas = document.getElementById('config-toggle-avatar-canvas');
+/** @type {ReturnType<typeof createPlayerPortrait> | null} */
+let configAvatarPortrait = null;
 const configPanel = document.getElementById('config-panel');
 const traitsPanel = document.getElementById('traits-panel');
-const introSkipEl = document.getElementById('intro-skip');
 const paneScene = document.getElementById('config-pane-scene');
 const paneSkin = document.getElementById('config-pane-skin');
 const paneShowcase = document.getElementById('config-pane-showcase');
 const paneAnim = document.getElementById('config-pane-anim');
 const paneControls = document.getElementById('config-pane-controls');
+const paneSkills = document.getElementById('config-pane-skills');
+const paneSettings = document.getElementById('config-pane-settings');
+const skillsPanelEl = document.getElementById('skills-panel');
+const settingsPanelEl = document.getElementById('settings-panel');
 const skinTabBtn = document.getElementById('config-tab-skin');
 const navButtons = [...document.querySelectorAll('.config-nav-btn')];
 
@@ -79,6 +86,9 @@ const scenePanel = createConfigSectionPanel(scenePanelEl, {
 let showcasePreview = null;
 /** @type {ReturnType<typeof createAnimPreview>|null} */
 let animPreview = null;
+/** @type {ReturnType<typeof createGameSettingsPanel>|null} */
+let gameSettingsPanel = null;
+let skillInfoPanel = null;
 
 const showcasePanel = createConfigSectionPanel(showcasePanelEl, {
   accordion: true,
@@ -130,7 +140,7 @@ function resizePreviewViewport() {
 
 syncScenePickers(DEFAULT_SCENE_ID);
 
-/** @type {'scene' | 'skin' | 'showcase' | 'anim' | 'controls'} */
+/** @type {'scene' | 'skin' | 'showcase' | 'anim' | 'controls' | 'settings'} */
 let configTab = 'scene';
 let configOpen = false;
 /** @type {string|null} */
@@ -163,6 +173,8 @@ function syncNavUi() {
   paneShowcase.hidden = configTab !== 'showcase';
   paneAnim.hidden = configTab !== 'anim';
   paneControls.hidden = configTab !== 'controls';
+  paneSkills.hidden = configTab !== 'skills';
+  paneSettings.hidden = configTab !== 'settings';
   const previewOpen = configTab === 'showcase' || configTab === 'anim';
   configPanel.classList.toggle('is-showcase', configTab === 'showcase');
   configPanel.classList.toggle('is-anim', configTab === 'anim');
@@ -199,7 +211,7 @@ function clearConfigCamera() {
     explore.controls.enabled = exploreViewSnapshot.enabled;
     explore.controls.update();
     exploreViewSnapshot = null;
-  } else if (!playerSystem && world && !world.isIntro) {
+  } else if (!playerSystem && world) {
     explore.controls.enabled = true;
   }
 }
@@ -307,7 +319,7 @@ function applyConfigTab(tab, { force = false } = {}) {
     return;
   }
 
-  if (tab === 'controls') {
+  if (tab === 'controls' || tab === 'settings' || tab === 'skills') {
     if (playerSystem) {
       if (exploreViewSnapshot) {
         explore.controls.target.copy(exploreViewSnapshot.target);
@@ -315,10 +327,13 @@ function applyConfigTab(tab, { force = false } = {}) {
         explore.controls.enabled = false;
         exploreViewSnapshot = null;
       }
-      playerSystem.setConfigMode('controls');
+      playerSystem.setConfigMode(
+        tab === 'settings' ? 'settings' : tab === 'skills' ? 'skills' : 'controls',
+      );
     } else {
       applySceneOverviewFraming();
     }
+    if (tab === 'settings') gameSettingsPanel?.refresh();
     return;
   }
 
@@ -336,9 +351,12 @@ configToggle.addEventListener('click', (e) => {
 for (const btn of navButtons) {
   btn.addEventListener('click', () => {
     if (btn.disabled) return;
-    applyConfigTab(/** @type {'scene'|'skin'|'showcase'|'anim'|'controls'} */ (btn.dataset.tab), {
-      force: true,
-    });
+    applyConfigTab(
+      /** @type {'scene'|'skin'|'showcase'|'anim'|'controls'|'skills'|'settings'} */ (btn.dataset.tab),
+      {
+        force: true,
+      },
+    );
   });
 }
 
@@ -388,6 +406,18 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const explore = createExploreCamera(canvas);
 const camera = explore.camera;
 
+if (settingsPanelEl) {
+  gameSettingsPanel = createGameSettingsPanel(settingsPanelEl, {
+    exploreControls: explore.controls,
+  });
+} else {
+  applyGameSettings(loadGameSettings());
+}
+
+if (skillsPanelEl) {
+  skillInfoPanel = createSkillInfoPanel(skillsPanelEl);
+}
+
 /** Outline composer is bound per active scene (normals + color Roberts, Unity Outlines). */
 let outlineComposer = null;
 
@@ -419,7 +449,7 @@ function disposeBuiltWorld(entry) {
   if (!entry || entry.__disposed) return;
   entry.__disposed = true;
   try {
-    entry.npcs?.dispose?.();
+    entry.enemies?.dispose?.();
   } catch {
     // ignore
   }
@@ -463,43 +493,106 @@ function bindOutlineComposer(scene) {
   updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
 }
 
-function setHint(playable, isIntro = false) {
-  if (isIntro) {
-    hintEl.textContent = '开场动画进行中。点击「跳过开场」，或按 Space / Enter 继续。';
-    return;
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function renderKeyTokens(tokens) {
+  return tokens
+    .map((token) => {
+      if (token === '+') return '<span class="controls-sep">+</span>';
+      if (token === '/') return '<span class="controls-sep">/</span>';
+      return `<kbd>${escapeHtml(token)}</kbd>`;
+    })
+    .join('');
+}
+
+/**
+ * @param {{ note?: string, groups: Array<{ title: string, rows: Array<{ keys: string[], desc: string }> }> }} guide
+ */
+function renderControlsGuide(guide) {
+  if (!hintEl) return;
+  const parts = [];
+  if (guide.note) {
+    parts.push(`<p class="controls-guide-note">${escapeHtml(guide.note)}</p>`);
   }
+  for (const group of guide.groups) {
+    const rows = group.rows
+      .map(
+        (row) =>
+          `<li><span class="controls-keys">${renderKeyTokens(row.keys)}</span><span class="controls-desc">${escapeHtml(row.desc)}</span></li>`,
+      )
+      .join('');
+    parts.push(
+      `<section class="controls-group"><p class="controls-group-title">${escapeHtml(group.title)}</p><ul class="controls-list">${rows}</ul></section>`,
+    );
+  }
+  hintEl.innerHTML = parts.join('');
+}
+
+function setHint(playable) {
   if (playable) {
-    hintEl.textContent =
-      'WASD 移动\nShift 奔跑\nSpace 跳跃\nF 扔雪球\n点击鱼洞钓鱼\n按住左键拖拽旋转视角\n滚轮缩放';
+    renderControlsGuide({
+      groups: [
+        {
+          title: '移动',
+          rows: [
+            { keys: ['W', 'A', 'S', 'D'], desc: '移动' },
+            { keys: ['Shift'], desc: '奔跑' },
+            { keys: ['Space'], desc: '跳跃' },
+          ],
+        },
+        {
+          title: '雪球',
+          rows: [
+            { keys: ['按住左键'], desc: '蓄力投掷' },
+            { keys: ['左右拖动'], desc: '调整投掷方向' },
+            { keys: ['上下拖动'], desc: '调节投掷角度' },
+            { keys: ['松开左键'], desc: '投出雪球' },
+            { keys: ['F'], desc: '快速投掷' },
+          ],
+        },
+        {
+          title: '视角',
+          rows: [
+            { keys: ['拖拽左键'], desc: '旋转视角' },
+            { keys: ['滚轮'], desc: '缩放镜头' },
+          ],
+        },
+        {
+          title: '互动',
+          rows: [{ keys: ['点击鱼洞'], desc: '开始钓鱼' }],
+        },
+      ],
+    });
     return;
   }
-  hintEl.textContent = '左键拖拽旋转\n右键 / 滚轮平移 / 缩放\nSpace 重置视角';
-}
-
-function setIntroSkipVisible(visible) {
-  if (!introSkipEl) return;
-  introSkipEl.hidden = !visible;
-}
-
-function finishIntro() {
-  if (currentId !== INTRO.id || switching) return;
-  loadScene(INTRO.nextSceneId || THE_BERG_SCENE_ID).catch(() => {});
+  renderControlsGuide({
+    groups: [
+      {
+        title: '浏览',
+        rows: [
+          { keys: ['左键拖拽'], desc: '旋转视角' },
+          { keys: ['右键', '/', '滚轮'], desc: '平移 / 缩放' },
+          { keys: ['Space'], desc: '重置视角' },
+        ],
+      },
+    ],
+  });
 }
 
 function sceneIdFromHash() {
   const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
-  // Legacy bookmark `#WorldMap` → V_02 assembly
-  if (hash === 'WorldMap') return THE_BERG_SCENE_ID;
+  // Legacy bookmarks
+  if (hash === 'WorldMap' || hash === 'Intro') return THE_BERG_SCENE_ID;
   return optionById.has(hash) ? hash : DEFAULT_SCENE_ID;
 }
 
 async function buildScene(option) {
-  if (option.isIntro) {
-    return buildIntroScene({
-      loadingManager,
-      onProgress: (msg, ratio = 0.5) => setProgress(ratio, msg),
-    });
-  }
   if (option.isTheBerg) {
     return buildTheBergScene({
       map: option.bergMap,
@@ -532,6 +625,19 @@ async function buildScene(option) {
   });
 }
 
+function bindConfigAvatar(source) {
+  if (!configToggleAvatarCanvas) return;
+  if (!configAvatarPortrait) {
+    configAvatarPortrait = createPlayerPortrait(configToggleAvatarCanvas, source ?? null);
+  } else {
+    configAvatarPortrait.setSource(source ?? null);
+  }
+}
+
+function clearConfigAvatar() {
+  configAvatarPortrait?.setSource(null);
+}
+
 async function attachPlayer(next, { syncCamera = true, keepCamera = false } = {}) {
   traitCustomizer?.dispose();
   traitCustomizer = null;
@@ -540,19 +646,11 @@ async function attachPlayer(next, { syncCamera = true, keepCamera = false } = {}
     playerSystem.dispose();
     playerSystem = null;
   }
+  clearConfigAvatar();
 
   traitsPanel.replaceChildren();
-  setIntroSkipVisible(Boolean(next.isIntro));
 
   if (!next.playable) {
-    if (next.isIntro) {
-      explore.controls.enabled = false;
-      if (!keepCamera) explore.applyView(next.cameraView);
-      setHint(false, true);
-      updateSkinTabAvailability();
-      if (configOpen && !keepCamera) applyConfigTab(configTab, { force: true });
-      return;
-    }
     explore.controls.enabled = !keepCamera;
     if (!keepCamera) explore.applyView(next.cameraView);
     setHint(false);
@@ -574,9 +672,11 @@ async function attachPlayer(next, { syncCamera = true, keepCamera = false } = {}
     collisionRoot: next.collisionRoot,
     loadingManager,
     fishingHoles: next.fishingHoles ?? null,
+    enemies: next.enemies ?? null,
     spawn: next.spawn,
     syncCamera,
   });
+  bindConfigAvatar(playerSystem.fbx);
   traitCustomizer = createTraitCustomizer(playerSystem.traitEquipper, traitsPanel);
   setHint(true);
   updateSkinTabAvailability();
@@ -590,6 +690,7 @@ function disposeActivePlayer() {
     playerSystem.dispose();
     playerSystem = null;
   }
+  clearConfigAvatar();
   traitsPanel.replaceChildren();
   updateSkinTabAvailability();
 }
@@ -738,21 +839,12 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
   }
 }
 
-introSkipEl?.addEventListener('click', () => {
-  finishIntro();
-});
-
 window.addEventListener('hashchange', () => {
   loadScene(sceneIdFromHash(), { pushHash: false }).catch(() => {});
 });
 
 window.addEventListener('keydown', (e) => {
   if (configOpen && e.code === 'Escape') return;
-  if (world?.isIntro && (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape')) {
-    e.preventDefault();
-    finishIntro();
-    return;
-  }
   if (e.code === 'Space' && !playerSystem && !configOpen) {
     e.preventDefault();
     explore.reset();
@@ -765,15 +857,13 @@ function animate() {
 
   if (transitioning) {
     sceneTransition.update(dt);
-    if (world && !world.isIntro) world.update?.(dt);
+    world?.update?.(dt);
   } else if (playerSystem) {
     playerSystem.update(dt);
+    configAvatarPortrait?.update();
     world?.update?.(dt);
-  } else if (world?.isIntro) {
-    const done = world.update?.(dt, { camera, controls: explore.controls });
-    if (done) finishIntro();
   } else {
-    if (!configOpen || configTab === 'scene' || configTab === 'controls') {
+    if (!configOpen || configTab === 'scene' || configTab === 'controls' || configTab === 'skills' || configTab === 'settings') {
       explore.controls.update();
     }
     world?.update?.(dt);

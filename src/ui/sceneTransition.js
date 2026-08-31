@@ -41,7 +41,7 @@ export function getWorldSlideRoots(world, extras = []) {
   add(world?.water?.mesh);
   add(world?.snow?.points);
   add(world?.fishingHoles?.group);
-  add(world?.npcs?.group);
+  add(world?.enemies?.group);
 
   if (set.size === 0 && world?.scene) {
     for (const child of world.scene.children) {

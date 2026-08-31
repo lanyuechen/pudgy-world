@@ -4,8 +4,8 @@ import { createLights } from './lights.js';
 import { assetUrl } from '../config/assetUrl.js';
 import { loadModelRoot } from '../loaders/loadModel.js';
 import { createAtlasMaterials, applyAtlasMaterials } from './atlasMaterials.js';
-import { INDIVIDUAL_NPCS } from '../config/npcConfig.js';
-import { createNpcCrowd } from '../npc/createNpcCrowd.js';
+import { ENEMY_PLACEMENTS } from '../config/combatConfig.js';
+import { createEnemyCrowd } from '../combat/createEnemyCrowd.js';
 
 function cameraViewFromObject(object) {
   const box = new THREE.Box3().setFromObject(object);
@@ -63,13 +63,13 @@ export async function buildNeighborhoodScene(
     sunDistance: Math.max(80, cameraView.orbitDistance),
   });
 
-  let npcs = null;
+  let enemies = null;
   if (playable) {
-    onProgress?.('Loading NPCs…', 0.85);
-    npcs = await createNpcCrowd({
+    onProgress?.('Loading enemies…', 0.85);
+    enemies = await createEnemyCrowd({
       parent: scene,
       collisionRoot: wrapper,
-      placements: INDIVIDUAL_NPCS,
+      placements: ENEMY_PLACEMENTS,
       loadingManager,
     });
   }
@@ -80,13 +80,13 @@ export async function buildNeighborhoodScene(
     scene,
     lights,
     root: wrapper,
-    npcs,
+    enemies,
     cameraView,
     playable,
     collisionRoot: playable ? wrapper : null,
     spawn: playable ? { x: 0, y: 20, z: 0 } : undefined,
     update(dt) {
-      npcs?.update(dt);
+      /* enemies updated by player system when playable */
     },
   };
 }

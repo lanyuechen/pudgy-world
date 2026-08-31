@@ -30,6 +30,14 @@ export const CONTROL = {
   camMinDistance: 2.5,
   camMaxDistance: 120.0,
   mouseSensitivity: 0.18,
+  /** When true, dragging right looks left. */
+  invertLookX: false,
+  /** When true, dragging up looks down. */
+  invertLookY: false,
+  /** Orbit zoom scale per wheel deltaY. */
+  zoomSensitivity: 0.01,
+  /** `cameraFollow` = body matches camera yaw; `independent` = body turns with movement. */
+  thirdPersonYawMode: 'independent',
   pitchMin: -20,
   pitchMax: 60,
   camSmoothDamp: 0.28,

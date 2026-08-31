@@ -1,5 +1,4 @@
 import assetListData from './assetListPlacements.json';
-import { INTRO } from './introConfig.js';
 import { LEVEL_PROPS, LEVEL_PROP_TRANSFORM } from './levelsConfig.js';
 import { NPC_MODELS } from './npcConfig.js';
 import { THE_BERG_MAPS, THE_BERG_MAP_V02 } from './theBergAssets.js';
@@ -7,8 +6,7 @@ import { THE_BERG_MAPS, THE_BERG_MAP_V02 } from './theBergAssets.js';
 const WORLD_MAP_ID = THE_BERG_MAP_V02.id;
 /** Prefer newest Pengu Plaza when present. */
 const PLAZA_ID = 'Individual_PenguPlaza_03';
-const INTRO_ID = INTRO.id;
-const DEFAULT_ID = INTRO_ID;
+const DEFAULT_ID = WORLD_MAP_ID;
 
 /**
  * Product town names that map to scene assets — label as 中文名(英文名).
@@ -86,7 +84,6 @@ function isIndividualTown(name) {
 
 /**
  * Scene dropdown:
- * 0. Intro
  * 1. Neighborhoods — continuous World Map
  * 2. Individuals — standalone town islands
  * 3. NPCs — character model previews
@@ -110,7 +107,6 @@ export function getSceneOptions() {
       id: p.name,
       label: individualLabel(p.name),
       placement: byName.get(p.name),
-      isIntro: false,
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: false,
@@ -124,7 +120,6 @@ export function getSceneOptions() {
       label: npcLabel(key, url),
       modelKey: key,
       placement: null,
-      isIntro: false,
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: false,
@@ -142,7 +137,6 @@ export function getSceneOptions() {
       position: { x: 0, y: 0, z: 0 },
       ...LEVEL_PROP_TRANSFORM,
     },
-    isIntro: false,
     isTheBerg: false,
     isAssetList: false,
     isPenguPlaza: false,
@@ -157,7 +151,6 @@ export function getSceneOptions() {
       id: p.name,
       label: toLabel(p.name),
       placement: byName.get(p.name),
-      isIntro: false,
       isTheBerg: false,
       isAssetList: false,
       isPenguPlaza: false,
@@ -165,24 +158,11 @@ export function getSceneOptions() {
       group: 'extras',
     }));
 
-  const intro = {
-    id: INTRO_ID,
-    label: 'Intro',
-    placement: null,
-    isIntro: true,
-    isTheBerg: false,
-    isAssetList: false,
-    isPenguPlaza: false,
-    isNpcPreview: false,
-    group: 'intro',
-  };
-
   const worldMaps = THE_BERG_MAPS.map((map) => ({
     id: map.id,
     label: map.label,
     placement: null,
     bergMap: map,
-    isIntro: false,
     isTheBerg: true,
     isAssetList: false,
     isPenguPlaza: false,
@@ -191,11 +171,6 @@ export function getSceneOptions() {
   }));
 
   const groups = [
-    {
-      id: 'intro',
-      label: 'Intro',
-      options: [intro],
-    },
     {
       id: 'neighborhoods',
       label: 'Neighborhoods',
@@ -234,5 +209,4 @@ export function getSceneOptions() {
 }
 
 export const DEFAULT_SCENE_ID = DEFAULT_ID;
-export const INTRO_SCENE_ID = INTRO_ID;
 export const THE_BERG_SCENE_ID = WORLD_MAP_ID;

@@ -1,6 +1,9 @@
+import { COMBAT } from '../config/combatConfig.js';
+
 /**
  * Input layer — docs §3.2
  * WASD move · Shift run · Space jump · LMB drag look · wheel zoom
+ * LMB hold (no drag) charge snowball throw · short click interact
  * Fishing: setUiOpen locks everything.
  * Config panel: setMoveLocked / setLookLocked independently.
  */
@@ -22,14 +25,23 @@ export function createControlInput(domElement) {
   let pointerDown = false;
   let pointerDownX = 0;
   let pointerDownY = 0;
+  let pointerDownAt = 0;
   let pointerDragged = false;
+  let chargePointerActive = false;
+  let throwChargeEnabled = false;
   /** @type {{ clientX:number, clientY:number }|null} */
   let interactClick = null;
   let throwRequested = false;
+  let chargeRelease = null;
+  let chargeLevel = 0;
+  let isCharging = false;
   let returnPressed = false;
   /** Normalized pointer vs canvas: left=-1 … right=+1, bottom=-1 … top=+1 */
   let pointerNX = 0;
   let pointerNY = 0;
+  let pointerClientX = 0;
+  let pointerClientY = 0;
+  let pointerOnCanvas = false;
 
   function updatePointerNorm(clientX, clientY) {
     const rect = domElement.getBoundingClientRect();
@@ -68,6 +80,55 @@ export function createControlInput(domElement) {
     lookAccumY = 0;
     zoomAccum = 0;
     pointerDown = false;
+    chargePointerActive = false;
+    isCharging = false;
+    chargeLevel = 0;
+  }
+
+  function updateChargeState(now) {
+    if (
+      throwChargeEnabled &&
+      chargePointerActive &&
+      pointerDown &&
+      !pointerDragged &&
+      !moveLocked &&
+      !lookLocked
+    ) {
+      const held = (now - pointerDownAt) / 1000;
+      const grace = COMBAT.cameraDragGrace ?? 0.15;
+      if (held < grace) {
+        isCharging = false;
+        chargeLevel = 0;
+        return;
+      }
+      isCharging = true;
+      const span = Math.max(0.01, COMBAT.chargeMaxHold - COMBAT.chargeMinHold);
+      chargeLevel = Math.min(1, Math.max(0, (held - grace) / span));
+      return;
+    }
+    if (!chargePointerActive || pointerDragged || moveLocked || lookLocked) {
+      isCharging = false;
+      chargeLevel = 0;
+      return;
+    }
+    const held = (now - pointerDownAt) / 1000;
+    if (held < COMBAT.chargeMinHold) {
+      isCharging = false;
+      chargeLevel = 0;
+      return;
+    }
+    isCharging = true;
+    const span = COMBAT.chargeMaxHold - COMBAT.chargeMinHold;
+    chargeLevel = span > 0 ? Math.min(1, (held - COMBAT.chargeMinHold) / span) : 1;
+  }
+
+  function setThrowChargeEnabled(v) {
+    throwChargeEnabled = !!v;
+  }
+
+  /** @deprecated use setThrowChargeEnabled */
+  function setThrowAimLock(v) {
+    throwChargeEnabled = !!v;
   }
 
   /** Full freeze (fishing / legacy UI). */
@@ -126,27 +187,67 @@ export function createControlInput(domElement) {
     refreshMove();
   }
 
+  function trackPointer(clientX, clientY) {
+    pointerClientX = clientX;
+    pointerClientY = clientY;
+    updatePointerNorm(clientX, clientY);
+  }
+
   function onPointerDown(e) {
     if (e.button !== 0 || e.target !== domElement || lookLocked) return;
     pointerDown = true;
     pointerDownX = e.clientX;
     pointerDownY = e.clientY;
+    pointerDownAt = performance.now();
     pointerDragged = false;
+    chargePointerActive = !moveLocked;
     rotateCamera = false;
-    updatePointerNorm(e.clientX, e.clientY);
+    pointerOnCanvas = true;
+    trackPointer(e.clientX, e.clientY);
     domElement.setPointerCapture?.(e.pointerId);
   }
 
   function onPointerUp(e) {
     if (e.button !== 0) return;
+    const now = performance.now();
     const dragged =
       pointerDragged || Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4;
-    if (!moveLocked && !lookLocked && pointerDown && !dragged && e.target === domElement) {
-      interactClick = { clientX: e.clientX, clientY: e.clientY };
+    const held = (now - pointerDownAt) / 1000;
+
+    if (!moveLocked && !lookLocked && pointerDown) {
+      if (throwChargeEnabled) {
+        if (isCharging) {
+          const span = Math.max(0.01, COMBAT.chargeMaxHold - COMBAT.chargeMinHold);
+          const grace = COMBAT.cameraDragGrace ?? 0.15;
+          const power = Math.min(1, Math.max(0, (held - grace) / span));
+          chargeRelease = {
+            chargeLevel: power,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          };
+        }
+      } else if (!dragged && held >= COMBAT.chargeMinHold) {
+        const span = COMBAT.chargeMaxHold - COMBAT.chargeMinHold;
+        const power =
+          span > 0
+            ? Math.min(1, (Math.min(held, COMBAT.chargeMaxHold) - COMBAT.chargeMinHold) / span)
+            : 1;
+        chargeRelease = {
+          chargeLevel: power,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        };
+      } else if (!dragged && e.target === domElement) {
+        interactClick = { clientX: e.clientX, clientY: e.clientY };
+      }
     }
+
     pointerDown = false;
     pointerDragged = false;
+    chargePointerActive = false;
     rotateCamera = false;
+    isCharging = false;
+    chargeLevel = 0;
     try {
       domElement.releasePointerCapture?.(e.pointerId);
     } catch {
@@ -156,8 +257,14 @@ export function createControlInput(domElement) {
 
   function onPointerMove(e) {
     if (lookLocked) return;
-    updatePointerNorm(e.clientX, e.clientY);
+    trackPointer(e.clientX, e.clientY);
     if (!pointerDown || (e.buttons & 1) === 0) return;
+
+    if (throwChargeEnabled && isCharging) return;
+
+    const held = (performance.now() - pointerDownAt) / 1000;
+    if (chargePointerActive && held >= COMBAT.chargeMinHold && !throwChargeEnabled) return;
+
     if (Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4) {
       pointerDragged = true;
       rotateCamera = true;
@@ -167,9 +274,14 @@ export function createControlInput(domElement) {
     lookAccumY += e.movementY;
   }
 
+  function onPointerEnter(e) {
+    if (lookLocked) return;
+    pointerOnCanvas = true;
+    trackPointer(e.clientX, e.clientY);
+  }
+
   function onPointerLeave() {
-    pointerNX = 0;
-    pointerNY = 0;
+    pointerOnCanvas = false;
   }
 
   function onWheel(e) {
@@ -184,8 +296,7 @@ export function createControlInput(domElement) {
     runHeld = false;
     rotateCamera = false;
     pointerDown = false;
-    pointerNX = 0;
-    pointerNY = 0;
+    pointerOnCanvas = false;
   }
 
   window.addEventListener('keydown', onKeyDown);
@@ -194,11 +305,13 @@ export function createControlInput(domElement) {
   domElement.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointerup', onPointerUp);
   domElement.addEventListener('pointermove', onPointerMove);
+  domElement.addEventListener('pointerenter', onPointerEnter);
   domElement.addEventListener('pointerleave', onPointerLeave);
   domElement.addEventListener('wheel', onWheel, { passive: false });
   domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
   function consume() {
+    updateChargeState(performance.now());
     const uiOpen = moveLocked && lookLocked;
     const frame = {
       moveX: moveLocked ? 0 : moveX,
@@ -212,7 +325,14 @@ export function createControlInput(domElement) {
       rotateCamera: !lookLocked && rotateCamera,
       pointerNX: lookLocked ? 0 : pointerNX,
       pointerNY: lookLocked ? 0 : pointerNY,
+      pointerClientX: lookLocked ? 0 : pointerClientX,
+      pointerClientY: lookLocked ? 0 : pointerClientY,
+      pointerOnCanvas: !lookLocked && pointerOnCanvas,
+      pointerDown: !moveLocked && !lookLocked && pointerDown,
       throwSnowball: !moveLocked && throwRequested,
+      chargeRelease,
+      chargeLevel: !moveLocked && !lookLocked ? chargeLevel : 0,
+      isCharging: !moveLocked && !lookLocked && isCharging,
       returnPressed,
       interactClick: moveLocked || lookLocked ? null : interactClick,
       locked: moveLocked,
@@ -225,6 +345,7 @@ export function createControlInput(domElement) {
     zoomAccum = 0;
     jumpPressed = false;
     throwRequested = false;
+    chargeRelease = null;
     returnPressed = false;
     interactClick = null;
     return frame;
@@ -237,6 +358,7 @@ export function createControlInput(domElement) {
     domElement.removeEventListener('pointerdown', onPointerDown);
     window.removeEventListener('pointerup', onPointerUp);
     domElement.removeEventListener('pointermove', onPointerMove);
+    domElement.removeEventListener('pointerenter', onPointerEnter);
     domElement.removeEventListener('pointerleave', onPointerLeave);
     domElement.removeEventListener('wheel', onWheel);
   }
@@ -246,6 +368,8 @@ export function createControlInput(domElement) {
     setUiOpen,
     setMoveLocked,
     setLookLocked,
+    setThrowChargeEnabled,
+    setThrowAimLock,
     dispose,
     get uiOpen() {
       return moveLocked && lookLocked;

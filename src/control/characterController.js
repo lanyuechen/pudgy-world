@@ -45,6 +45,7 @@ export function createCharacterController(character, { physics } = {}) {
   const _feet = { x: 0, y: 0, z: 0 };
   const _physicsFeet = new THREE.Vector3().copy(character.position);
   const _displayVel = new THREE.Vector3();
+  const _knockback = new THREE.Vector2();
 
   function yawToWorldForward(yawRad, out) {
     out.set(Math.sin(yawRad), 0, Math.cos(yawRad));
@@ -138,7 +139,16 @@ export function createCharacterController(character, { physics } = {}) {
     else _worldMove.set(0, 0, 0);
 
     isMoving = _worldMove.lengthSq() > 0.0001;
-    if (isMoving) {
+    let isAiming = false;
+    const cameraFollowYaw = CONTROL.thirdPersonYawMode === 'cameraFollow';
+    if (input.faceYawRad != null) {
+      yaw = lerpAngle(yaw, input.faceYawRad, CONTROL.rotateSmooth * fixedDelta);
+      character.rotation.y = yaw;
+      isAiming = true;
+    } else if (cameraFollowYaw) {
+      yaw = lerpAngle(yaw, cameraYawRad, CONTROL.rotateSmooth * fixedDelta);
+      character.rotation.y = yaw;
+    } else if (isMoving) {
       const targetYaw = Math.atan2(_worldMove.x, _worldMove.z);
       yaw = lerpAngle(yaw, targetYaw, CONTROL.rotateSmooth * fixedDelta);
       character.rotation.y = yaw;
@@ -162,20 +172,26 @@ export function createCharacterController(character, { physics } = {}) {
     let dy;
     let dz;
 
+    const kbDecay = Math.exp(-(CONTROL.knockbackDecay ?? 4.5) * fixedDelta);
+    const kbX = _knockback.x;
+    const kbZ = _knockback.y;
+    _knockback.multiplyScalar(kbDecay);
+    if (_knockback.lengthSq() < 0.04) _knockback.set(0, 0);
+
     if (!airborne) {
       velocity.y = 0;
-      velocity.x = _worldMove.x * speed;
-      velocity.z = _worldMove.z * speed;
+      velocity.x = _worldMove.x * speed + kbX;
+      velocity.z = _worldMove.z * speed + kbZ;
       dx = velocity.x * fixedDelta;
       dz = velocity.z * fixedDelta;
       // No constant downward stick — it sank players slowly through building meshes (~0.15m/s)
       dy = 0;
     } else {
       velocity.y += CONTROL.gravity * fixedDelta;
-      if (isMoving) {
-        velocity.x = _worldMove.x * speed;
-        velocity.z = _worldMove.z * speed;
-      }
+      const moveX = isMoving ? _worldMove.x * speed : 0;
+      const moveZ = isMoving ? _worldMove.z * speed : 0;
+      velocity.x = moveX + kbX;
+      velocity.z = moveZ + kbZ;
       dx = velocity.x * fixedDelta;
       dy = velocity.y * fixedDelta;
       dz = velocity.z * fixedDelta;
@@ -231,14 +247,14 @@ export function createCharacterController(character, { physics } = {}) {
       snapToGroundIfNeeded();
     }
 
-    return status(jumpStarted);
+    return status(jumpStarted, isAiming);
   }
 
-  function status(jumpStarted = false) {
+  function status(jumpStarted = false, isAiming = false) {
     return {
       grounded: grounded && !airborne,
       moving: isMoving,
-      turning: isMoving,
+      turning: isMoving || isAiming,
       sliding: false,
       jumpStarted,
       velocity: velocity.clone(),
@@ -246,11 +262,26 @@ export function createCharacterController(character, { physics } = {}) {
     };
   }
 
+  /** @param {number} dirX @param {number} dirZ @param {number} [speed] */
+  function applyKnockback(dirX, dirZ, speed = 4) {
+    const len = Math.hypot(dirX, dirZ);
+    if (len < 1e-6) return;
+    _knockback.x += (dirX / len) * speed;
+    _knockback.y += (dirZ / len) * speed;
+  }
+
+  function syncFacingToCamera(viewYawRad, dt) {
+    yaw = lerpAngle(yaw, viewYawRad, CONTROL.rotateSmooth * dt);
+    character.rotation.y = yaw;
+  }
+
   return {
     fixedTick,
+    syncFacingToCamera,
     snapToGroundIfNeeded,
     snapDisplayPosition,
     updateDisplayPosition,
+    applyKnockback,
     getPhysicsFeet: () => _physicsFeet,
     get isGrounded() {
       return grounded && !airborne;

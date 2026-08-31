@@ -7,8 +7,8 @@ import { createSnow } from './snow.js';
 import { loadPenguPlaza } from './loadPlaza.js';
 import { createFishingHoles } from '../fishing/fishingHoles.js';
 import { PLAYER } from '../config/playerConfig.js';
-import { INDIVIDUAL_NPCS } from '../config/npcConfig.js';
-import { createNpcCrowd } from '../npc/createNpcCrowd.js';
+import { ENEMY_PLACEMENTS } from '../config/combatConfig.js';
+import { createEnemyCrowd } from '../combat/createEnemyCrowd.js';
 
 /**
  * Builds the Pengu_Plaza visual world (playable).
@@ -58,11 +58,11 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
   }));
   const fishingHoles = createFishingHoles(scene, { holes });
 
-  onProgress?.('Loading NPCs…', 0.88);
-  const npcs = await createNpcCrowd({
+  onProgress?.('Loading enemies…', 0.88);
+  const enemies = await createEnemyCrowd({
     parent: scene,
     collisionRoot: plaza,
-    placements: INDIVIDUAL_NPCS,
+    placements: ENEMY_PLACEMENTS,
     loadingManager,
   });
 
@@ -72,7 +72,7 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     water,
     snow,
     plaza,
-    npcs,
+    enemies,
     fishingHoles,
     playable: true,
     collisionRoot: plaza,
@@ -89,7 +89,6 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     update(dt) {
       snow.update(dt);
       water.update(dt);
-      npcs.update(dt);
     },
   };
 }

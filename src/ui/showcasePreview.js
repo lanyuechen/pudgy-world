@@ -3,7 +3,6 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { INTRO } from '../config/introConfig.js';
 import { assetUrl } from '../config/assetUrl.js';
 import { loadModelRoot } from '../loaders/loadModel.js';
 import { loadNpcModel } from '../npc/loadNpc.js';
@@ -176,9 +175,12 @@ export function createShowcasePreview(canvas, loadingManager) {
           }
         }
         contentRoot = root;
-      } else if (option.isIntro || option.isTheBerg) {
-        const bergUrl =
-          option.bergMap?.assets?.[0]?.url ?? INTRO.bergFbx;
+      } else if (option.isTheBerg) {
+        const bergUrl = option.bergMap?.assets?.[0]?.url;
+        if (!bergUrl) {
+          busy = false;
+          return;
+        }
         contentRoot = await loadPreviewRoot(bergUrl, option.label || 'Preview');
       } else if (option.placement) {
         contentRoot = await loadPreviewRoot(option.placement.url, option.placement.name);

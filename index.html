@@ -13,7 +13,6 @@
           <p class="scene-loading-status" id="scene-loading-status">加载场景…</p>
         </div>
       </div>
-      <button type="button" id="intro-skip" hidden>跳过开场</button>
       <div id="loading">
         <div class="panel">
           <p class="title">Pudgy World</p>
@@ -29,30 +28,9 @@
           aria-expanded="false"
           aria-controls="config-panel"
         >
-          <svg
-            class="config-toggle-icon config-toggle-icon--open"
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            aria-hidden="true"
-          >
-            <path
-              fill="currentColor"
-              d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.1 7.1 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.6.24-1.14.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.43.34.68.22l2.39-.96c.49.39 1.03.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.6-.24 1.14-.55 1.63-.94l2.39.96c.25.12.54.02.68-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"
-            />
-          </svg>
-          <svg
-            class="config-toggle-icon config-toggle-icon--close"
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            aria-hidden="true"
-          >
-            <path
-              fill="currentColor"
-              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-            />
-          </svg>
+          <span class="config-toggle-avatar" aria-hidden="true">
+            <canvas id="config-toggle-avatar-canvas" width="40" height="40"></canvas>
+          </span>
         </button>
         <div id="config-panel" role="dialog" aria-label="设置" hidden>
           <div class="config-shell">
@@ -129,6 +107,34 @@
                     />
                   </svg>
                 </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
+                  data-tab="skills"
+                  aria-pressed="false"
+                  aria-label="技能"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6L12 2z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
+                  data-tab="settings"
+                  aria-pressed="false"
+                  aria-label="设置"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"
+                    />
+                  </svg>
+                </button>
               </nav>
               <div class="config-body">
                 <div id="config-pane-scene" class="config-pane" data-pane="scene">
@@ -145,7 +151,15 @@
                 </div>
                 <div id="config-pane-controls" class="config-pane" data-pane="controls" hidden>
                   <p class="config-section-title">操作指导</p>
-                  <div id="hint" class="controls-guide">WASD 移动 · Shift 奔跑 · Space 跳跃 · F 扔雪球 · 点击钓鱼 · 拖拽视角 · 滚轮缩放</div>
+                  <div id="hint" class="controls-guide" aria-live="polite"></div>
+                </div>
+                <div id="config-pane-skills" class="config-pane" data-pane="skills" hidden>
+                  <p class="config-section-title">技能</p>
+                  <div id="skills-panel"></div>
+                </div>
+                <div id="config-pane-settings" class="config-pane" data-pane="settings" hidden>
+                  <p class="config-section-title">设置</p>
+                  <div id="settings-panel"></div>
                 </div>
               </div>
             </div>

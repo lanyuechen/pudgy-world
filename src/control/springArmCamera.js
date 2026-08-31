@@ -39,9 +39,24 @@ export function createSpringArmCamera(camera) {
   const raycaster = new THREE.Raycaster();
   let pivotReady = false;
   let rightHalfProjection = false;
+  let shakeMag = 0;
+  let shakeTimeLeft = 0;
 
   /** Fraction of vertical FOV the character should fill in skin preview */
   const SKIN_FILL_Y = 0.85;
+
+  function addShake(magnitude, duration) {
+    shakeMag = Math.max(shakeMag, magnitude);
+    shakeTimeLeft = Math.max(shakeTimeLeft, duration);
+  }
+
+  function applyShakeOffset() {
+    if (shakeTimeLeft <= 0) return;
+    const s = shakeMag * Math.min(1, shakeTimeLeft / 0.08);
+    camera.position.x += (Math.random() - 0.5) * 2 * s;
+    camera.position.y += (Math.random() - 0.5) * 2 * s * 0.55;
+    camera.position.z += (Math.random() - 0.5) * 2 * s;
+  }
 
   function setObstacles(meshes) {
     obstacles = meshes ?? [];
@@ -70,6 +85,10 @@ export function createSpringArmCamera(camera) {
 
   function getYawRad() {
     return THREE.MathUtils.degToRad(yaw);
+  }
+
+  function getViewYawRad() {
+    return THREE.MathUtils.degToRad(yaw + softYaw);
   }
 
   function getYawDeg() {
@@ -244,7 +263,7 @@ export function createSpringArmCamera(camera) {
       if (Math.abs(ny) < dz) ny = 0;
       else ny = Math.sign(ny) * ((Math.abs(ny) - dz) / Math.max(1e-6, 1 - dz));
 
-      targetYaw = -nx * (CONTROL.softLookYawDeg ?? 10);
+      targetYaw = -nx * (CONTROL.softLookYawDeg ?? 10) * (CONTROL.invertLookX ? -1 : 1);
       targetPitch = -ny * (CONTROL.softLookPitchDeg ?? 6);
     }
     const t = 1 - Math.exp(-(CONTROL.softLookFollowSpeed ?? 6) * dt);
@@ -333,23 +352,34 @@ export function createSpringArmCamera(camera) {
     if (!character && configMode !== 'scene') return;
 
     const dt = Math.min(deltaTime, 0.05);
+    if (shakeTimeLeft > 0) {
+      shakeTimeLeft -= dt;
+      if (shakeTimeLeft <= 0) shakeMag = 0;
+    }
     const sens = CONTROL.mouseSensitivity;
+    const lookXSign = CONTROL.invertLookX ? -1 : 1;
+    const lookYSign = CONTROL.invertLookY ? -1 : 1;
+    const zoomSens = CONTROL.zoomSensitivity ?? 0.01;
     const inSkin = configMode === 'skin';
     const inScene = configMode === 'scene';
     const playLocked = uiOpen && !inSkin && !inScene;
 
     if (inSkin || inScene) {
       if (input.rotateCamera) {
-        yaw -= input.lookX * sens;
+        yaw -= input.lookX * sens * lookXSign;
         const pitchLo = inScene ? -40 : CONTROL.pitchMin;
         const pitchHi = inScene ? 75 : CONTROL.pitchMax;
-        pitch = THREE.MathUtils.clamp(pitch + input.lookY * sens, pitchLo, pitchHi);
+        pitch = THREE.MathUtils.clamp(
+          pitch + input.lookY * sens * lookYSign,
+          pitchLo,
+          pitchHi,
+        );
       }
       if (input.zoomDelta) {
         const minD = inScene ? 4 : CONTROL.camMinDistance;
         const maxD = inScene ? Math.max(CONTROL.camMaxDistance, 400) : CONTROL.camMaxDistance;
         targetDistance = THREE.MathUtils.clamp(
-          targetDistance + input.zoomDelta * 0.01,
+          targetDistance + input.zoomDelta * zoomSens,
           minD,
           maxD,
         );
@@ -359,15 +389,16 @@ export function createSpringArmCamera(camera) {
     } else if (!playLocked) {
       if (input.rotateCamera) {
         bakeSoftLook();
-        yaw -= input.lookX * sens;
+        yaw -= input.lookX * sens * lookXSign;
         pitch = THREE.MathUtils.clamp(
-          pitch + input.lookY * sens,
+          pitch + input.lookY * sens * lookYSign,
           CONTROL.pitchMin,
           CONTROL.pitchMax,
         );
         updateSoftLook(dt, input, false);
       } else {
         if (
+          CONTROL.thirdPersonYawMode !== 'cameraFollow' &&
           status.moving &&
           status.facingYawDeg != null &&
           !(input.moveY < -0.01)
@@ -380,7 +411,7 @@ export function createSpringArmCamera(camera) {
 
       if (input.zoomDelta) {
         targetDistance = THREE.MathUtils.clamp(
-          targetDistance + input.zoomDelta * 0.01,
+          targetDistance + input.zoomDelta * zoomSens,
           CONTROL.camMinDistance,
           CONTROL.camMaxDistance,
         );
@@ -458,8 +489,14 @@ export function createSpringArmCamera(camera) {
 
     calculateOrbitPosition(_pivotSmooth, viewYaw, viewPitch, realDistance, _final);
     smoothDampVec3(camera.position, _final, _vel, CONTROL.camSmoothDamp, dt);
+    applyShakeOffset();
     camera.lookAt(_pivotSmooth);
     camera.updateMatrixWorld(true);
+  }
+
+  function getAimDirection(out) {
+    camera.getWorldDirection(out);
+    return out;
   }
 
   return {
@@ -468,7 +505,10 @@ export function createSpringArmCamera(camera) {
     setUiOpen,
     lateUpdate,
     getYawRad,
+    getViewYawRad,
     getYawDeg,
+    getAimDirection,
+    addShake,
     enterSkinPreview,
     enterScenePreview,
     exitConfigPreview,
