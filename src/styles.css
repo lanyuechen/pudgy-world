@@ -232,7 +232,8 @@ body,
 }
 
 #config-panel.is-showcase,
-#config-panel.is-anim {
+#config-panel.is-anim,
+#config-panel.is-effects {
   width: 100vw;
 }
 
@@ -247,12 +248,14 @@ body,
 }
 
 #config-panel.is-showcase .showcase-viewport,
-#config-panel.is-anim .showcase-viewport {
+#config-panel.is-anim .showcase-viewport,
+#config-panel.is-effects .showcase-viewport {
   display: block;
 }
 
 #showcase-canvas,
-#anim-canvas {
+#anim-canvas,
+#effects-canvas {
   position: absolute;
   inset: 0;
   display: block;
@@ -261,7 +264,8 @@ body,
 }
 
 #showcase-canvas[hidden],
-#anim-canvas[hidden] {
+#anim-canvas[hidden],
+#effects-canvas[hidden] {
   display: none !important;
 }
 
@@ -350,9 +354,10 @@ body,
   overflow-y: auto;
 }
 
-/* Anim / showcase: many accordion groups — scroll the pane when content exceeds the viewport */
+/* Anim / showcase / effects: many accordion groups — scroll the pane when content exceeds the viewport */
 .config-pane[data-pane='anim'],
-.config-pane[data-pane='showcase'] {
+.config-pane[data-pane='showcase'],
+.config-pane[data-pane='effects'] {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -361,7 +366,8 @@ body,
 }
 
 .config-pane[data-pane='anim'] .config-section-panel,
-.config-pane[data-pane='showcase'] .config-section-panel {
+.config-pane[data-pane='showcase'] .config-section-panel,
+.config-pane[data-pane='effects'] .config-section-panel {
   flex: 0 0 auto;
   overflow: visible;
 }
@@ -509,6 +515,38 @@ body,
   text-overflow: ellipsis;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.config-list-item--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  flex-basis: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 6px 12px;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.config-list-item-label,
+.config-list-item-sublabel {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-list-item-label {
+  font: 600 12px/1.2 'Segoe UI', system-ui, sans-serif;
+  color: #e8fbff;
+}
+
+.config-list-item-sublabel {
+  font: 500 11px/1.2 'Segoe UI', system-ui, sans-serif;
+  color: rgba(232, 251, 255, 0.62);
 }
 
 .config-list-item:hover:not(:disabled) {

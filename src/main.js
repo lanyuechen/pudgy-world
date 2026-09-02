@@ -16,11 +16,13 @@ import { createTraitCustomizer } from './ui/traitCustomizer.js';
 import { createConfigSectionPanel } from './ui/configSectionPanel.js';
 import { createShowcasePreview } from './ui/showcasePreview.js';
 import { createAnimPreview } from './ui/animPreview.js';
+import { createEffectPreview } from './ui/effectPreview.js';
 import { createPlayerPortrait } from './ui/playerPortrait.js';
 import { createGameSettingsPanel } from './ui/gameSettingsPanel.js';
 import { createSkillInfoPanel } from './ui/skillInfoPanel.js';
 import { applyGameSettings, loadGameSettings } from './config/gameSettings.js';
 import { getAnimOptions } from './config/animConfig.js';
+import { getEffectOptions } from './config/effectsConfig.js';
 import { frameExploreInRightHalf, getSceneBounds, setRightHalfViewOffset } from './ui/configCameraFraming.js';
 import {
   createSceneTransition,
@@ -31,6 +33,7 @@ import {
 const { flat: sceneOptions, individuals, otherGroups } = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
 const { groups: animGroups, byId: animById } = getAnimOptions();
+const { sections: effectSections, byId: effectById } = getEffectOptions();
 
 const SHOWCASE_GROUP_LABELS = {
   neighborhoods: 'World Map',
@@ -46,9 +49,12 @@ const loadingStatus = document.getElementById('loading-status');
 const scenePanelEl = document.getElementById('scene-panel');
 const showcasePanelEl = document.getElementById('showcase-panel');
 const animPanelEl = document.getElementById('anim-panel');
+const effectsPanelEl = document.getElementById('effects-panel');
 const showcaseCanvas = document.getElementById('showcase-canvas');
 const animCanvas = document.getElementById('anim-canvas');
+const effectsCanvas = document.getElementById('effects-canvas');
 const animStatusEl = document.getElementById('anim-preview-status');
+const effectsStatusEl = document.getElementById('effects-preview-status');
 const showcaseViewportEl = document.getElementById('showcase-viewport');
 const hintEl = document.getElementById('hint');
 const configToggle = document.getElementById('config-toggle');
@@ -63,6 +69,7 @@ const paneShowcase = document.getElementById('config-pane-showcase');
 const paneAnim = document.getElementById('config-pane-anim');
 const paneControls = document.getElementById('config-pane-controls');
 const paneSkills = document.getElementById('config-pane-skills');
+const paneEffects = document.getElementById('config-pane-effects');
 const paneSettings = document.getElementById('config-pane-settings');
 const skillsPanelEl = document.getElementById('skills-panel');
 const settingsPanelEl = document.getElementById('settings-panel');
@@ -86,6 +93,8 @@ const scenePanel = createConfigSectionPanel(scenePanelEl, {
 let showcasePreview = null;
 /** @type {ReturnType<typeof createAnimPreview>|null} */
 let animPreview = null;
+/** @type {ReturnType<typeof createEffectPreview>|null} */
+let effectPreview = null;
 /** @type {ReturnType<typeof createGameSettingsPanel>|null} */
 let gameSettingsPanel = null;
 let skillInfoPanel = null;
@@ -125,6 +134,22 @@ const animPanel = createConfigSectionPanel(animPanelEl, {
   },
 });
 
+const effectsPanel = createConfigSectionPanel(effectsPanelEl, {
+  accordion: true,
+  sections: effectSections.map((section) => ({
+    ...section,
+    count: section.options.length,
+  })),
+  onSelect: (sectionId, optionId) => {
+    const option = effectById.get(optionId);
+    if (!option) return;
+    effectsSelectedId = optionId;
+    effectsPanel.syncSelection((id) => (id === sectionId ? optionId : ''));
+    resizePreviewViewport();
+    effectPreview?.previewEffect(option);
+  },
+});
+
 function syncScenePickers(id) {
   scenePanel.syncSelection((sectionId) => (sectionId === 'scenes' ? id : ''));
 }
@@ -136,17 +161,20 @@ function resizePreviewViewport() {
   const h = Math.round(rect.height);
   if (configTab === 'showcase') showcasePreview?.resize(w, h);
   if (configTab === 'anim') animPreview?.resize(w, h);
+  if (configTab === 'effects') effectPreview?.resize(w, h);
 }
 
 syncScenePickers(DEFAULT_SCENE_ID);
 
-/** @type {'scene' | 'skin' | 'showcase' | 'anim' | 'controls' | 'settings'} */
+/** @type {'scene' | 'skin' | 'showcase' | 'anim' | 'controls' | 'skills' | 'effects' | 'settings'} */
 let configTab = 'scene';
 let configOpen = false;
 /** @type {string|null} */
 let showcaseSelectedId = null;
 /** @type {string|null} */
 let animSelectedId = null;
+/** @type {string|null} */
+let effectsSelectedId = null;
 /** @type {null | { kind: 'explore', target: THREE.Vector3, position: THREE.Vector3, enabled: boolean }} */
 let exploreViewSnapshot = null;
 
@@ -174,17 +202,23 @@ function syncNavUi() {
   paneAnim.hidden = configTab !== 'anim';
   paneControls.hidden = configTab !== 'controls';
   paneSkills.hidden = configTab !== 'skills';
+  paneEffects.hidden = configTab !== 'effects';
   paneSettings.hidden = configTab !== 'settings';
-  const previewOpen = configTab === 'showcase' || configTab === 'anim';
+  const previewOpen =
+    configTab === 'showcase' || configTab === 'anim' || configTab === 'effects';
   configPanel.classList.toggle('is-showcase', configTab === 'showcase');
   configPanel.classList.toggle('is-anim', configTab === 'anim');
+  configPanel.classList.toggle('is-effects', configTab === 'effects');
   if (showcaseViewportEl) {
     showcaseViewportEl.setAttribute('aria-hidden', String(!previewOpen));
   }
   if (showcaseCanvas) showcaseCanvas.hidden = configTab !== 'showcase';
   if (animCanvas) animCanvas.hidden = configTab !== 'anim';
+  if (effectsCanvas) effectsCanvas.hidden = configTab !== 'effects';
   if (animStatusEl) animStatusEl.hidden = configTab !== 'anim';
+  if (effectsStatusEl) effectsStatusEl.hidden = configTab !== 'effects';
   animPreview?.setActive(configTab === 'anim');
+  effectPreview?.setActive(configTab === 'effects');
 }
 
 function updateSkinTabAvailability() {
@@ -199,8 +233,9 @@ function updateSkinTabAvailability() {
 }
 
 function clearConfigCamera() {
-  configPanel.classList.remove('is-showcase', 'is-anim');
+  configPanel.classList.remove('is-showcase', 'is-anim', 'is-effects');
   animPreview?.setActive(false);
+  effectPreview?.setActive(false);
   if (playerSystem) {
     playerSystem.setConfigMode(null);
   }
@@ -216,10 +251,10 @@ function clearConfigCamera() {
   }
 }
 
-function applyShowcaseMode() {
+function applyShowcaseMode(mode = 'showcase') {
   setRightHalfViewOffset(camera, false);
   if (playerSystem) {
-    playerSystem.setConfigMode('showcase');
+    playerSystem.setConfigMode(mode);
     return;
   }
   if (!exploreViewSnapshot) {
@@ -319,6 +354,28 @@ function applyConfigTab(tab, { force = false } = {}) {
     return;
   }
 
+  if (tab === 'effects') {
+    applyShowcaseMode('effects');
+    effectsPanel.updateLayout();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        resizePreviewViewport();
+        const option =
+          (effectsSelectedId && effectById.get(effectsSelectedId)) ||
+          (effectSections[0]?.options?.[0]
+            ? effectById.get(effectSections[0].options[0].value)
+            : null);
+        if (option) {
+          effectsSelectedId = option.id;
+          const sectionId = effectSections[0]?.id ?? 'effects';
+          effectsPanel.syncSelection((id) => (id === sectionId ? option.id : ''));
+          effectPreview?.previewEffect(option);
+        }
+      });
+    });
+    return;
+  }
+
   if (tab === 'controls' || tab === 'settings' || tab === 'skills') {
     if (playerSystem) {
       if (exploreViewSnapshot) {
@@ -352,7 +409,7 @@ for (const btn of navButtons) {
   btn.addEventListener('click', () => {
     if (btn.disabled) return;
     applyConfigTab(
-      /** @type {'scene'|'skin'|'showcase'|'anim'|'controls'|'skills'|'settings'} */ (btn.dataset.tab),
+      /** @type {'scene'|'skin'|'showcase'|'anim'|'controls'|'skills'|'effects'|'settings'} */ (btn.dataset.tab),
       {
         force: true,
       },
@@ -389,6 +446,9 @@ loadingManager.onError = (url) => {
 
 showcasePreview = createShowcasePreview(showcaseCanvas, loadingManager);
 animPreview = createAnimPreview(animCanvas, loadingManager, { statusEl: animStatusEl });
+effectPreview = createEffectPreview(effectsCanvas, loadingManager, {
+  statusEl: effectsStatusEl,
+});
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -732,6 +792,7 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
   scenePanel.setAllDisabled(true);
   showcasePanel.setAllDisabled(true);
   animPanel.setAllDisabled(true);
+  effectsPanel.setAllDisabled(true);
   syncScenePickers(id);
   if (showGlobalLoading) {
     showLoading(true);
@@ -834,6 +895,7 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
     scenePanel.setAllDisabled(false);
     showcasePanel.setAllDisabled(false);
     animPanel.setAllDisabled(false);
+    effectsPanel.setAllDisabled(false);
     if (currentId) syncScenePickers(currentId);
     if (showGlobalLoading) showLoading(false);
   }
@@ -874,6 +936,9 @@ function animate() {
   if (configOpen && configTab === 'anim') {
     animPreview?.update(dt);
   }
+  if (configOpen && configTab === 'effects') {
+    effectPreview?.update(dt);
+  }
   if (world?.scene) {
     if (world.lights?.sun) {
       syncToonLightDirection(world.scene, world.lights.sun);
@@ -890,7 +955,7 @@ function onResize() {
   const pr = renderer.getPixelRatio();
   outlineComposer?.setSize(window.innerWidth, window.innerHeight, pr);
   updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
-  if (configOpen && (configTab === 'showcase' || configTab === 'anim')) {
+  if (configOpen && (configTab === 'showcase' || configTab === 'anim' || configTab === 'effects')) {
     resizePreviewViewport();
   }
   if (configOpen && !transitioning) applyConfigTab(configTab, { force: true });

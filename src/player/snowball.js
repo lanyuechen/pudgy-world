@@ -101,9 +101,9 @@ export function createSnowballSystem(scene, {
     return targets;
   }
 
-  function fireEntityHit(target, ball) {
-    if (target.id === 'player') onPlayerHit?.(ball);
-    else onEntityHit?.(target, ball);
+  function fireEntityHit(target, ball, hitPoint) {
+    if (target.id === 'player') onPlayerHit?.(ball, hitPoint);
+    else onEntityHit?.(target, ball, hitPoint);
   }
 
   /** Capsule proximity along the flight segment — works when SkinnedMesh rays miss. */
@@ -131,25 +131,25 @@ export function createSnowballSystem(scene, {
         const dz = _sample.z - cz;
         if (dx * dx + dz * dz > hitR * hitR) continue;
         if (_sample.y < y0 || _sample.y > y1) continue;
-        fireEntityHit(target, ball);
+        fireEntityHit(target, ball, _sample.clone());
         return true;
       }
     }
     return false;
   }
 
-  function tryMeshEntityHit(ball, hitObj) {
+  function tryMeshEntityHit(ball, hitObj, hitPoint) {
     const targets = getHitTargets();
     for (const target of targets) {
       if (!target?.alive) continue;
       if (ball.sourceRoot && target.sourceRoot === ball.sourceRoot) continue;
       if (target.sourceRoot && isUnderRoot(hitObj, target.sourceRoot)) {
-        fireEntityHit(target, ball);
+        fireEntityHit(target, ball, hitPoint?.clone?.() ?? ball.mesh.position.clone());
         return true;
       }
       for (const mesh of target.meshes ?? []) {
         if (hitObj === mesh || isUnderRoot(hitObj, mesh)) {
-          fireEntityHit(target, ball);
+          fireEntityHit(target, ball, hitPoint?.clone?.() ?? ball.mesh.position.clone());
           return true;
         }
       }
@@ -200,7 +200,7 @@ export function createSnowballSystem(scene, {
           if (ball.sourceRoot && isUnderRoot(obj, ball.sourceRoot)) continue;
           if (ball.processed.has(obj.uuid)) continue;
 
-          if (tryMeshEntityHit(ball, obj)) {
+          if (tryMeshEntityHit(ball, obj, hit.point)) {
             ball.processed.add(obj.uuid);
             ball.active = false;
             resolved = true;

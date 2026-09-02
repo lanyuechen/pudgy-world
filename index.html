@@ -124,6 +124,20 @@
                 <button
                   type="button"
                   class="config-nav-btn"
+                  data-tab="effects"
+                  aria-pressed="false"
+                  aria-label="特效"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M12 2l1.2 4.2L17.5 7l-4.3 1.2L12 12.5l-1.2-4.3L6.5 7l4.3-.8L12 2zm7 7l.8 2.8L22.5 13l-2.7.8L19 16.5l-.8-2.7L15.5 13l2.7-.2L19 9zM5 13l.9 3.1L9 17l-3.1.9L5 21l-.9-3.1L1 17l3.1-.9L5 13z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="config-nav-btn"
                   data-tab="settings"
                   aria-pressed="false"
                   aria-label="设置"
@@ -157,6 +171,9 @@
                   <p class="config-section-title">技能</p>
                   <div id="skills-panel"></div>
                 </div>
+                <div id="config-pane-effects" class="config-pane" data-pane="effects" hidden>
+                  <div id="effects-panel" class="config-section-panel"></div>
+                </div>
                 <div id="config-pane-settings" class="config-pane" data-pane="settings" hidden>
                   <p class="config-section-title">设置</p>
                   <div id="settings-panel"></div>
@@ -166,7 +183,9 @@
             <div class="showcase-viewport" id="showcase-viewport" aria-hidden="true">
               <canvas id="showcase-canvas" aria-label="橱窗预览"></canvas>
               <canvas id="anim-canvas" hidden aria-label="动画预览"></canvas>
+              <canvas id="effects-canvas" hidden aria-label="特效预览"></canvas>
               <p id="anim-preview-status" class="anim-preview-status" hidden></p>
+              <p id="effects-preview-status" class="anim-preview-status" hidden></p>
             </div>
           </div>
         </div>

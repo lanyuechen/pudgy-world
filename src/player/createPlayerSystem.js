@@ -10,7 +10,6 @@ import { createMinimap } from '../ui/minimap.js';
 import { createSkillBar } from '../ui/skillBar.js';
 import { createPlayerSkillSystem } from '../combat/playerSkills.js';
 import { createCombatHud } from '../ui/combatHud.js';
-import { createDamagePopup } from '../ui/damagePopup.js';
 import { createCombatHitFeedback } from '../ui/combatHitFeedback.js';
 import { pitchTToLaunchSin, computeLockedThrowVelocity } from '../combat/targetSnap.js';
 import { COMBAT } from '../config/combatConfig.js';
@@ -21,6 +20,7 @@ import { createFishingPrompt } from '../ui/fishingPrompt.js';
 import { createTraitEquipper } from './traitEquipper.js';
 import { createSlideFx } from './slideFx.js';
 import { createCatchPresenter } from '../fishing/catchPresenter.js';
+import { createQuarksFx } from '../effects/createQuarksFx.js';
 import { loadSavedCosmeticTraitLoadout } from '../config/traitPersistence.js';
 import { TRAIT_TYPE } from '../config/traitsConfig.js';
 import { FISHING } from '../config/fishingConfig.js';
@@ -134,12 +134,11 @@ export async function createPlayerSystem({
   const handBone = findHandBone(playerRoot);
   const minimap = createMinimap({ mapRoot: collisionRoot });
   const combatHud = createCombatHud();
-  const damagePopup = createDamagePopup(camera, canvas);
   const combatHitFeedback = createCombatHitFeedback();
   const combatActive = Boolean(enemies);
+  const quarksFx = combatActive ? await createQuarksFx(scene, loadingManager) : null;
   minimap.setVisible(combatActive);
   combatHud.setVisible(combatActive);
-  damagePopup.setVisible(combatActive);
   combatHitFeedback.setVisible(combatActive);
   if (combatActive) combatHud.reset(enemies.getWaveTargetCount());
   const trajectoryPreview = combatActive
@@ -189,8 +188,9 @@ export async function createPlayerSystem({
           }
         : null,
     onEnvironmentHit: () => {},
-    onEntityHit: (target, ball) => {
+    onEntityHit: (target, ball, hitPoint) => {
       if (ball?.sourceId !== 'player') return;
+      if (hitPoint) quarksFx?.playHitAt(hitPoint);
       enemies?.applyDamage(target, ball.damage ?? COMBAT.snowballDamage, ball);
     },
     onPlayerHit: (ball) => {
@@ -223,7 +223,7 @@ export async function createPlayerSystem({
       spawnEnemySnowball: (origin, opts) => snowballs.spawn(origin, opts),
       onKill: () => combatHud.addKill(),
       onWaveStart: (total) => combatHud.resetWave(total),
-      popup: damagePopup,
+      onEnemyDeath: (position) => quarksFx?.playDeathAt(position),
       physics,
     });
   }
@@ -282,7 +282,7 @@ export async function createPlayerSystem({
 
   /**
    * Config panel camera / move lock.
-   * @param {null | 'skin' | 'scene' | 'showcase' | 'controls' | 'settings' | 'skills'} mode
+   * @param {null | 'skin' | 'scene' | 'showcase' | 'effects' | 'controls' | 'settings' | 'skills'} mode
    * @param {{ box?: import('three').Box3, snap?: boolean, fromCurrent?: boolean }} [opts]
    */
   function setConfigMode(mode, opts = {}) {
@@ -313,7 +313,7 @@ export async function createPlayerSystem({
       }
       return;
     }
-    if (mode === 'showcase') {
+    if (mode === 'showcase' || mode === 'effects') {
       input.setMoveLocked(true);
       input.setLookLocked(true);
       playerCamera.setUiOpen(false);
@@ -643,7 +643,7 @@ export async function createPlayerSystem({
     animator.update(dt, status);
     slideFx.update(dt, status);
     snowballs.update(dt);
-    damagePopup.update(dt);
+    quarksFx?.update(dt);
     combatHitFeedback.update(dt);
     playerHitCooldown = Math.max(0, playerHitCooldown - dt);
     combatHud.update();
@@ -677,6 +677,7 @@ export async function createPlayerSystem({
     window.clearTimeout(catchDismissTimer);
     input.dispose();
     snowballs.dispose();
+    quarksFx?.dispose();
     slideFx.dispose();
     catchPresenter.dispose();
     traitEquipper.dispose();
@@ -685,12 +686,10 @@ export async function createPlayerSystem({
     trajectoryPreview?.dispose();
     minimap.dispose();
     combatHud.dispose();
-    damagePopup.dispose();
     combatHitFeedback.dispose();
     physics.dispose();
     minimap.setVisible(false);
     combatHud.setVisible(false);
-    damagePopup.setVisible(false);
     fishingPrompt.hide();
     scene.remove(playerRoot);
   }

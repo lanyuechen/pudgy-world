@@ -172,7 +172,6 @@ export async function createEnemyCrowd({
   let respawnTimer = 0;
   let killCallback = null;
   let waveStartCallback = null;
-  let damagePopup = null;
   /** @type {null | ((pos: THREE.Vector3, dir: THREE.Vector3) => void)} */
   let spawnSnowball = null;
   /** @type {null | ReturnType<import('../physics/createPhysicsWorld.js').createPhysicsWorld>} */
@@ -319,7 +318,18 @@ export async function createEnemyCrowd({
     if (idle) c.anim.play(idle, { loop: THREE.LoopRepeat });
   }
 
-  function deactivateEnemy(c) {
+  let deathFxCallback = null;
+
+  function deactivateEnemy(c, { playDespawnFx = false } = {}) {
+    if (playDespawnFx) {
+      deathFxCallback?.(
+        new THREE.Vector3(
+          c.root.position.x,
+          c.root.position.y + (COMBAT.enemyAimHeight ?? 1.2),
+          c.root.position.z,
+        ),
+      );
+    }
     c.alive = false;
     c.root.visible = false;
     c.target = null;
@@ -681,15 +691,9 @@ export async function createEnemyCrowd({
     c.hp -= amount;
     startFlash(c);
     if (ball) applyKnockback(c, ball);
-    const headPos = new THREE.Vector3(
-      c.root.position.x,
-      c.root.position.y + COMBAT.enemyAimHeight,
-      c.root.position.z,
-    );
-    damagePopup?.spawn(headPos);
 
     if (c.hp <= 0) {
-      deactivateEnemy(c);
+      deactivateEnemy(c, { playDespawnFx: true });
       killCallback?.();
     }
     return true;
@@ -697,11 +701,11 @@ export async function createEnemyCrowd({
 
   return {
     group,
-    bindCombat({ spawnEnemySnowball, onKill, onWaveStart, popup, physics: phys }) {
+    bindCombat({ spawnEnemySnowball, onKill, onWaveStart, onEnemyDeath, physics: phys }) {
       spawnSnowball = spawnEnemySnowball;
       killCallback = onKill;
       waveStartCallback = onWaveStart;
-      damagePopup = popup;
+      deathFxCallback = onEnemyDeath ?? null;
       physics = phys ?? null;
       // Re-seat any already-alive enemies onto Rapier capsules.
       if (physics) {

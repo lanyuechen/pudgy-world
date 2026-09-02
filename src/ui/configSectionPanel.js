@@ -6,7 +6,7 @@
  * - Section titles stay fixed; option lists scroll when content exceeds space.
  */
 
-/** @typedef {{ value: string, label: string }} ConfigSectionOption */
+/** @typedef {{ value: string, label: string, sublabel?: string }} ConfigSectionOption */
 /** @typedef {{ id: string, label: string, options: ConfigSectionOption[], count?: number, openByDefault?: boolean }} ConfigSectionDef */
 
 export function createConfigSectionPanel(containerEl, { sections, accordion = false, onSelect }) {
@@ -135,7 +135,19 @@ export function createConfigSectionPanel(containerEl, { sections, accordion = fa
       item.dataset.value = opt.value;
       item.setAttribute('role', 'option');
       item.setAttribute('aria-selected', 'false');
-      item.textContent = opt.label;
+      if (opt.sublabel) {
+        item.classList.add('config-list-item--stacked');
+        const primary = document.createElement('span');
+        primary.className = 'config-list-item-label';
+        primary.textContent = opt.label;
+        const secondary = document.createElement('span');
+        secondary.className = 'config-list-item-sublabel';
+        secondary.textContent = opt.sublabel;
+        item.append(primary, secondary);
+        item.setAttribute('aria-label', `${opt.label} ${opt.sublabel}`);
+      } else {
+        item.textContent = opt.label;
+      }
       item.addEventListener('click', () => onSelect(def.id, opt.value));
       list.appendChild(item);
       itemMap.set(opt.value, item);
