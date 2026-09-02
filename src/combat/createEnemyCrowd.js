@@ -3,7 +3,7 @@ import { ASSET_LOAD_CONCURRENCY, mapPool } from '../util/mapPool.js';
 import { bindNpcAnimations, loadNpcModel } from '../npc/loadNpc.js';
 import { COMBAT } from '../config/combatConfig.js';
 import { CONTROL, PLAYER } from '../config/playerConfig.js';
-import { createEnemyAiWorld } from './enemyAi/createEnemyAiWorld.js';
+import { createEnemyAiWorld, rollEnemyPersonality } from './enemyAi/createEnemyAiWorld.js';
 import { chargeLevelToSpeed, computeBallisticVelocity } from './ballisticAim.js';
 import { pitchTToLaunchSin, computeLockedThrowVelocity } from './targetSnap.js';
 
@@ -172,6 +172,8 @@ export async function createEnemyCrowd({
   let respawnTimer = 0;
   let killCallback = null;
   let waveStartCallback = null;
+  /** @type {null | ((enemy: object) => void)} */
+  let playerContactCallback = null;
   /** @type {null | ((pos: THREE.Vector3, dir: THREE.Vector3) => void)} */
   let spawnSnowball = null;
   /** @type {null | ReturnType<import('../physics/createPhysicsWorld.js').createPhysicsWorld>} */
@@ -247,6 +249,7 @@ export async function createEnemyCrowd({
         ungroundedTimer: 0,
         pendingDodgeJump: false,
         dodgeStyle: null,
+        personality: null,
       });
       root.visible = false;
     } catch (err) {
@@ -309,6 +312,7 @@ export async function createEnemyCrowd({
     c.dodgeZ = 0;
     c.pendingDodgeJump = false;
     c.dodgeStyle = null;
+    c.personality = rollEnemyPersonality();
     c.homeX = x;
     c.homeZ = z;
     c.root.visible = true;
@@ -594,7 +598,10 @@ export async function createEnemyCrowd({
     c.attackCooldown = Math.max(0, c.attackCooldown - dt);
     updateFlash(c, dt);
 
-    const dodge = detectSnowballThreat(c.root.position.x, c.root.position.z, playerBalls);
+    const dodge =
+      c.personality?.canDodge
+        ? detectSnowballThreat(c.root.position.x, c.root.position.z, playerBalls)
+        : null;
     const move = aiWorld.computeMove(c, dt, dodge);
     const speed = move.speed;
     tickEnemyPhysics(c, move.moveX, move.moveZ, dt, speed, { wantJump: move.wantJump });
@@ -636,6 +643,10 @@ export async function createEnemyCrowd({
         throwAtPlayer(c, playerPos);
         c.attackCooldown =
           COMBAT.enemyAttackCooldown * (0.85 + Math.random() * 0.35);
+      } else if (move.wantMelee) {
+        playerContactCallback?.(c);
+        c.attackCooldown =
+          (COMBAT.enemyMeleeCooldown ?? 1.05) * (0.9 + Math.random() * 0.25);
       }
     } else if (speed > 0.2) {
       // Face wander direction while patrolling.
@@ -687,7 +698,7 @@ export async function createEnemyCrowd({
 
   function applyDamage(target, amount = COMBAT.snowballDamage, ball = null) {
     const c = controllers.find((e) => e.id === target.id);
-    if (!c?.alive) return false;
+    if (!c?.alive) return { applied: false, killed: false };
     c.hp -= amount;
     startFlash(c);
     if (ball) applyKnockback(c, ball);
@@ -695,17 +706,26 @@ export async function createEnemyCrowd({
     if (c.hp <= 0) {
       deactivateEnemy(c, { playDespawnFx: true });
       killCallback?.();
+      return { applied: true, killed: true };
     }
-    return true;
+    return { applied: true, killed: false };
   }
 
   return {
     group,
-    bindCombat({ spawnEnemySnowball, onKill, onWaveStart, onEnemyDeath, physics: phys }) {
+    bindCombat({
+      spawnEnemySnowball,
+      onKill,
+      onWaveStart,
+      onEnemyDeath,
+      onPlayerContact,
+      physics: phys,
+    }) {
       spawnSnowball = spawnEnemySnowball;
       killCallback = onKill;
       waveStartCallback = onWaveStart;
       deathFxCallback = onEnemyDeath ?? null;
+      playerContactCallback = onPlayerContact ?? null;
       physics = phys ?? null;
       // Re-seat any already-alive enemies onto Rapier capsules.
       if (physics) {

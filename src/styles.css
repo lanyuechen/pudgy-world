@@ -302,6 +302,7 @@ body,
 
 .config-nav-btn {
   appearance: none;
+  position: relative;
   display: grid;
   place-items: center;
   width: 36px;
@@ -312,6 +313,33 @@ body,
   background: transparent;
   color: rgba(232, 251, 255, 0.7);
   cursor: pointer;
+}
+
+.config-nav-btn::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  z-index: 5;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(6, 22, 30, 0.92);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  color: #e8fbff;
+  font: 600 12px/1.2 'Segoe UI', system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-50%) translateX(-4px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.config-nav-btn:hover:not(:disabled)::after,
+.config-nav-btn:focus-visible:not(:disabled)::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 
 .config-nav-btn:hover:not(:disabled) {

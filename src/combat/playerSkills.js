@@ -102,10 +102,11 @@ export function createPlayerSkillSystem({
           aimPoint.y + cfg.dropHeight + Math.random() * 4,
           aimPoint.z + Math.sin(ang) * dist,
         );
+        const drift = cfg.driftSpeed ?? 0.35;
         _vel.set(
-          (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * 2 * drift,
           -(10 + Math.random() * 8),
-          (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * 2 * drift,
         );
         spawnPlayerBall(_origin, _vel.clone(), { sourceRoot });
       });

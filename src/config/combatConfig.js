@@ -15,6 +15,16 @@ export const COMBAT = {
   enemyFleeRange: 4,
   /** Flee when HP ≤ this ratio of max HP. */
   enemyFleeHpRatio: 0.34,
+  /** Chance an enemy will dodge incoming snowballs (0–1). */
+  enemyDodgeShare: 0.25,
+  /** Chance an enemy uses ranged snowball throws; rest are melee. */
+  enemyRangedShare: 0.25,
+  /** Melee touch radius (m). */
+  enemyMeleeRange: 1.35,
+  /** Preferred stand-off for melee fighters (m). */
+  enemyMeleePreferredRange: 1.15,
+  enemyMeleeDamage: 1,
+  enemyMeleeCooldown: 1.05,
   /** Ground locomotion (m/s) — same order of magnitude as player walk/run. */
   enemyWalkSpeed: 2.4,
   enemyRunSpeed: 3.8,

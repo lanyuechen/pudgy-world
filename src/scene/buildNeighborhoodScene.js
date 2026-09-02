@@ -4,6 +4,7 @@ import { createLights } from './lights.js';
 import { assetUrl } from '../config/assetUrl.js';
 import { loadModelRoot } from '../loaders/loadModel.js';
 import { createAtlasMaterials, applyAtlasMaterials } from './atlasMaterials.js';
+import { createIslandWater } from './water.js';
 import { ENEMY_PLACEMENTS } from '../config/combatConfig.js';
 import { createEnemyCrowd } from '../combat/createEnemyCrowd.js';
 
@@ -63,6 +64,9 @@ export async function buildNeighborhoodScene(
     sunDistance: Math.max(80, cameraView.orbitDistance),
   });
 
+  const water = createIslandWater(wrapper);
+  scene.add(water.mesh);
+
   let enemies = null;
   if (playable) {
     onProgress?.('Loading enemies…', 0.85);
@@ -80,13 +84,17 @@ export async function buildNeighborhoodScene(
     scene,
     lights,
     root: wrapper,
+    water,
     enemies,
     cameraView,
     playable,
     collisionRoot: playable ? wrapper : null,
     spawn: playable ? { x: 0, y: 20, z: 0 } : undefined,
     update(dt) {
-      /* enemies updated by player system when playable */
+      water.update(dt);
+    },
+    dispose() {
+      water.dispose();
     },
   };
 }

@@ -27,6 +27,73 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/** Roll per-spawn combat personality for variety. */
+export function rollEnemyPersonality() {
+  const rangedShare = COMBAT.enemyRangedShare ?? 0.25;
+  const dodgeShare = COMBAT.enemyDodgeShare ?? 0.25;
+  const attackStyle = Math.random() < rangedShare ? 'ranged' : 'melee';
+  const canDodge = Math.random() < dodgeShare;
+
+  const r = Math.random();
+  /** @type {'aggressive' | 'balanced' | 'cautious'} */
+  let temperament;
+  if (r < 0.35) temperament = 'aggressive';
+  else if (r < 0.7) temperament = 'balanced';
+  else temperament = 'cautious';
+
+  let preferredRange =
+    attackStyle === 'melee'
+      ? (COMBAT.enemyMeleePreferredRange ?? 1.15)
+      : (COMBAT.enemyPreferredRange ?? 10);
+  let fleeHpRatio = 0;
+  let fleeOnClose = false;
+  let combatSpeedScale = 1;
+  /** Chance per second while engaged to briefly skitter away. */
+  let randomFleePerSec = 0;
+
+  if (temperament === 'aggressive') {
+    fleeHpRatio = 0;
+    fleeOnClose = attackStyle === 'ranged' && Math.random() < 0.25;
+    combatSpeedScale = 1.12;
+    if (attackStyle === 'melee') preferredRange *= 0.85;
+    randomFleePerSec = 0.004;
+  } else if (temperament === 'balanced') {
+    fleeHpRatio =
+      attackStyle === 'ranged'
+        ? 0.22 + Math.random() * 0.12
+        : Math.random() < 0.45
+          ? 0.18
+          : 0;
+    fleeOnClose = attackStyle === 'ranged';
+    randomFleePerSec = 0.025;
+  } else {
+    fleeHpRatio = 0.32 + Math.random() * 0.22;
+    fleeOnClose = attackStyle === 'ranged';
+    combatSpeedScale = 0.92;
+    if (attackStyle === 'ranged') preferredRange *= 1.12;
+    randomFleePerSec = 0.07;
+  }
+
+  return {
+    attackStyle,
+    canDodge,
+    temperament,
+    preferredRange,
+    fleeHpRatio,
+    fleeOnClose,
+    combatSpeedScale,
+    randomFleePerSec,
+  };
+}
+
+function getPreferredRange(controller) {
+  return (
+    controller.personality?.preferredRange ??
+    COMBAT.enemyPreferredRange ??
+    10
+  );
+}
+
 function pickWanderPoint(homeX, homeZ, radius, out) {
   const ang = Math.random() * Math.PI * 2;
   const dist = radius * (0.35 + Math.random() * 0.65);
@@ -241,13 +308,15 @@ class EngageState extends State {
     owner.steering.add(b.pursuit);
     owner.steering.add(b.separation);
     owner.steering.add(b.wander);
-    owner.maxSpeed = COMBAT.enemyCombatSpeed ?? 3.4;
+    owner.maxSpeed =
+      (COMBAT.enemyCombatSpeed ?? 3.4) *
+      (b.controller.personality?.combatSpeedScale ?? 1);
   }
 
   execute(owner) {
     const b = owner.userData.brain;
     const ctx = b.world._ctx;
-    const preferred = COMBAT.enemyPreferredRange ?? 10;
+    const preferred = getPreferredRange(b.controller);
     const dist = Math.hypot(
       ctx.playerX - owner.position.x,
       ctx.playerZ - owner.position.z,
@@ -302,7 +371,20 @@ class FleeState extends State {
     owner.steering.clear();
     b.fleePlayer.weight = 1.5;
     owner.steering.add(b.fleePlayer);
-    owner.maxSpeed = COMBAT.enemyRunSpeed ?? 3.8;
+    owner.maxSpeed =
+      (COMBAT.enemyRunSpeed ?? 3.8) *
+      (b.controller.personality?.combatSpeedScale ?? 1);
+    // Brief skitter flees expire; panic flees clear when safe.
+    if (b.fleeTimeLeft == null || b.fleeTimeLeft <= 0) {
+      b.fleeTimeLeft = 0;
+    }
+  }
+
+  execute(owner) {
+    const b = owner.userData.brain;
+    if (b.fleeTimeLeft > 0) {
+      b.fleeTimeLeft -= b.world._ctx.dt;
+    }
   }
 }
 
@@ -497,6 +579,7 @@ export function createEnemyAiWorld() {
       pursuit,
       memory,
       dodgeTimeLeft: 0,
+      fleeTimeLeft: 0,
       canSeePlayer: false,
       lastKnownValid: false,
       lastKnownX: 0,
@@ -535,17 +618,34 @@ export function createEnemyAiWorld() {
     return 'WANDER';
   }
 
+  function shouldFlee(brain, dist) {
+    const c = brain.controller;
+    const p = c.personality;
+    const hpRatio = c.hp / Math.max(COMBAT.enemyHp, 1);
+    const closeRange = COMBAT.enemyFleeRange ?? 4;
+
+    if (p) {
+      if (p.fleeHpRatio > 0 && hpRatio <= p.fleeHpRatio) return true;
+      if (p.fleeOnClose && dist <= closeRange) return true;
+      return false;
+    }
+
+    // Legacy fallback if personality missing.
+    const fleeHp = (COMBAT.enemyFleeHpRatio ?? 0.34) * COMBAT.enemyHp;
+    return dist <= closeRange || c.hp <= fleeHp;
+  }
+
   function evaluateTransitions(brain) {
     const c = brain.controller;
     const ctx = _ctx;
     const ex = c.root.position.x;
     const ez = c.root.position.z;
     const dist = Math.hypot(ctx.playerX - ex, ctx.playerZ - ez);
-    const fleeHp = (COMBAT.enemyFleeHpRatio ?? 0.34) * COMBAT.enemyHp;
     const detect = COMBAT.enemyDetectRange ?? 28;
     const memorySpan = COMBAT.enemyMemorySpan ?? 4;
+    const p = c.personality;
 
-    if (ctx.dodgeThreat) {
+    if (ctx.dodgeThreat && (!p || p.canDodge)) {
       if (!brain.fsm.in('DODGE')) brain.fsm.changeTo('DODGE');
       return;
     }
@@ -556,16 +656,29 @@ export function createEnemyAiWorld() {
       return;
     }
 
-    if (dist <= (COMBAT.enemyFleeRange ?? 4) || c.hp <= fleeHp) {
+    if (brain.fsm.in('FLEE')) {
+      // Timed skitter flees expire; sustained flees clear when no longer threatened.
+      if (brain.fleeTimeLeft > 0) return;
+      if (!shouldFlee(brain, dist)) {
+        brain.fsm.changeTo(combatFallbackState(brain, dist));
+      }
+      return;
+    }
+
+    if (shouldFlee(brain, dist)) {
+      brain.fleeTimeLeft = 0;
       if (!brain.fsm.in('FLEE')) brain.fsm.changeTo('FLEE');
       return;
     }
 
-    if (brain.fsm.in('FLEE')) {
-      // Stay fleeing until clear of melee / recovered HP, then re-acquire.
-      if (dist > (COMBAT.enemyMinRange ?? 6) && c.hp > fleeHp) {
-        brain.fsm.changeTo(combatFallbackState(brain, dist));
-      }
+    // Occasional random skitter while fighting — personality-driven.
+    if (
+      brain.fsm.in('ENGAGE') &&
+      p?.randomFleePerSec > 0 &&
+      Math.random() < p.randomFleePerSec * ctx.dt
+    ) {
+      brain.fleeTimeLeft = 0.7 + Math.random() * 1.1;
+      brain.fsm.changeTo('FLEE');
       return;
     }
 
@@ -617,6 +730,7 @@ export function createEnemyAiWorld() {
         moveZ: 0,
         speed: 0,
         wantThrow: false,
+        wantMelee: false,
         wantJump: false,
         inCombat: false,
       };
@@ -647,10 +761,18 @@ export function createEnemyAiWorld() {
       _ctx.playerX - controller.root.position.x,
       _ctx.playerZ - controller.root.position.z,
     );
+    const attackStyle = controller.personality?.attackStyle ?? 'ranged';
     const wantThrow =
+      attackStyle === 'ranged' &&
       brain.fsm.in('ENGAGE') &&
       brain.canSeePlayer &&
       dist <= (COMBAT.enemyAttackRange ?? 24) &&
+      controller.attackCooldown <= 0;
+    const meleeRange = COMBAT.enemyMeleeRange ?? 1.35;
+    const wantMelee =
+      attackStyle === 'melee' &&
+      brain.fsm.in('ENGAGE') &&
+      dist <= meleeRange &&
       controller.attackCooldown <= 0;
 
     const dodging = brain.fsm.in('DODGE');
@@ -662,6 +784,7 @@ export function createEnemyAiWorld() {
       moveZ: speed > 1e-4 ? vz / speed : 0,
       speed,
       wantThrow,
+      wantMelee,
       wantJump,
       inCombat,
       canSeePlayer: brain.canSeePlayer,

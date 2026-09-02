@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { SCENE } from '../config/sceneConfig.js';
 import { createProceduralSky } from './sky.js';
 import { createLights } from './lights.js';
-import { createWater } from './water.js';
+import { createPlazaWater } from './water.js';
 import { createSnow } from './snow.js';
 import { loadPenguPlaza } from './loadPlaza.js';
 import { createFishingHoles } from '../fishing/fishingHoles.js';
@@ -26,7 +26,7 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     castShadow: true,
   });
 
-  const water = createWater();
+  const water = createPlazaWater();
   scene.add(water.mesh);
 
   const textureLoader = new THREE.TextureLoader(loadingManager);
@@ -89,6 +89,9 @@ export async function buildPenguPlazaScene({ loadingManager, onProgress } = {}) 
     update(dt) {
       snow.update(dt);
       water.update(dt);
+    },
+    dispose() {
+      water.dispose();
     },
   };
 }

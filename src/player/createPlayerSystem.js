@@ -190,33 +190,45 @@ export async function createPlayerSystem({
     onEnvironmentHit: () => {},
     onEntityHit: (target, ball, hitPoint) => {
       if (ball?.sourceId !== 'player') return;
-      if (hitPoint) quarksFx?.playHitAt(hitPoint);
-      enemies?.applyDamage(target, ball.damage ?? COMBAT.snowballDamage, ball);
+      const result = enemies?.applyDamage(
+        target,
+        ball.damage ?? COMBAT.snowballDamage,
+        ball,
+      );
+      // Killing blow: death FX only (no hit bang).
+      if (hitPoint && result?.applied && !result.killed) {
+        quarksFx?.playHitAt(hitPoint);
+      }
     },
     onPlayerHit: (ball) => {
       if (configInvincible) return;
       if (ball?.sourceId === 'player' || playerHitCooldown > 0) return;
-      playerHitCooldown = COMBAT.playerHitInvuln ?? 0.55;
-      const dir = ball.velocity?.clone?.() ?? new THREE.Vector3();
-      dir.y = 0;
-      if (dir.lengthSq() < 1e-6 && ball.sourceRoot) {
-        dir.set(
-          playerRoot.position.x - ball.sourceRoot.position.x,
-          0,
-          playerRoot.position.z - ball.sourceRoot.position.z,
-        );
-      }
-      if (dir.lengthSq() > 1e-6) {
-        dir.normalize();
-        controller.applyKnockback(dir.x, dir.z, COMBAT.playerKnockbackSpeed ?? 6);
-      }
-      combatHitFeedback.pulse();
-      playerCamera.addShake(
-        COMBAT.playerHitShake ?? 0.1,
-        COMBAT.playerHitShakeDuration ?? 0.22,
-      );
+      applyPlayerHit(ball?.sourceRoot ?? null, ball?.velocity ?? null);
     },
   });
+
+  function applyPlayerHit(sourceRoot = null, velocity = null) {
+    if (configInvincible || playerHitCooldown > 0) return;
+    playerHitCooldown = COMBAT.playerHitInvuln ?? 0.55;
+    const dir = velocity?.clone?.() ?? new THREE.Vector3();
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-6 && sourceRoot) {
+      dir.set(
+        playerRoot.position.x - sourceRoot.position.x,
+        0,
+        playerRoot.position.z - sourceRoot.position.z,
+      );
+    }
+    if (dir.lengthSq() > 1e-6) {
+      dir.normalize();
+      controller.applyKnockback(dir.x, dir.z, COMBAT.playerKnockbackSpeed ?? 6);
+    }
+    combatHitFeedback.pulse();
+    playerCamera.addShake(
+      COMBAT.playerHitShake ?? 0.1,
+      COMBAT.playerHitShakeDuration ?? 0.22,
+    );
+  }
 
   if (enemies) {
     enemies.bindCombat({
@@ -224,6 +236,7 @@ export async function createPlayerSystem({
       onKill: () => combatHud.addKill(),
       onWaveStart: (total) => combatHud.resetWave(total),
       onEnemyDeath: (position) => quarksFx?.playDeathAt(position),
+      onPlayerContact: (enemy) => applyPlayerHit(enemy?.root ?? null, null),
       physics,
     });
   }

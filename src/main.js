@@ -551,6 +551,7 @@ function bindOutlineComposer(scene) {
   const pr = renderer.getPixelRatio();
   outlineComposer.setSize(window.innerWidth, window.innerHeight, pr);
   updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
+  world?.water?.setSize?.(window.innerWidth, window.innerHeight, pr);
 }
 
 function escapeHtml(text) {
@@ -943,6 +944,11 @@ function animate() {
     if (world.lights?.sun) {
       syncToonLightDirection(world.scene, world.lights.sun);
     }
+    if (world.water?.prepareDepth) {
+      const pr = renderer.getPixelRatio();
+      world.water.setSize(window.innerWidth, window.innerHeight, pr);
+      world.water.prepareDepth(renderer, world.scene, camera);
+    }
     if (outlineComposer) outlineComposer.render();
     else renderer.render(world.scene, camera);
   }
@@ -955,6 +961,7 @@ function onResize() {
   const pr = renderer.getPixelRatio();
   outlineComposer?.setSize(window.innerWidth, window.innerHeight, pr);
   updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
+  world?.water?.setSize?.(window.innerWidth, window.innerHeight, pr);
   if (configOpen && (configTab === 'showcase' || configTab === 'anim' || configTab === 'effects')) {
     resizePreviewViewport();
   }
