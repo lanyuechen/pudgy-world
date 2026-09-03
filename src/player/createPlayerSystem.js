@@ -4,6 +4,7 @@ import { loadPlayerModel } from './loadPlayer.js';
 import { createCharacterController } from '../control/characterController.js';
 import { createSpringArmCamera } from '../control/springArmCamera.js';
 import { createControlInput } from '../control/playerInput.js';
+import { createVirtualJoystick } from '../ui/virtualJoystick.js';
 import { createPlayerAnimator } from './playerAnimator.js';
 import { createSnowballSystem } from './snowball.js';
 import { createMinimap } from '../ui/minimap.js';
@@ -312,6 +313,10 @@ export async function createPlayerSystem({
 
   const input = createControlInput(canvas);
   input.setThrowChargeEnabled(combatActive);
+  const joystick = createVirtualJoystick({
+    onMove: (x, y) => input.setStick(x, y),
+  });
+  joystick.setVisible(true);
   let throwCooldown = 0;
   let logicAccum = 0;
   let framePointerX = window.innerWidth * 0.5;
@@ -329,9 +334,16 @@ export async function createPlayerSystem({
     facingYawDeg: 0,
   };
 
+  function syncJoystickVisible() {
+    const show = !configInvincible && !input.uiOpen;
+    joystick.setVisible(show);
+    if (!show) input.setStick(0, 0);
+  }
+
   function setInputLocked(locked) {
     input.setUiOpen(locked);
     playerCamera.setUiOpen(locked);
+    syncJoystickVisible();
   }
 
   /**
@@ -341,6 +353,7 @@ export async function createPlayerSystem({
    */
   function setConfigMode(mode, opts = {}) {
     configInvincible = mode != null;
+    syncJoystickVisible();
     if (mode === 'skin') {
       input.setMoveLocked(true);
       input.setLookLocked(false);
@@ -882,6 +895,7 @@ export async function createPlayerSystem({
   }
 
   function dispose() {
+    joystick.dispose();
     window.clearTimeout(catchDismissTimer);
     input.dispose();
     snowballs.dispose();

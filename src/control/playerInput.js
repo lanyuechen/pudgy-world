@@ -1,9 +1,11 @@
 import { COMBAT } from '../config/combatConfig.js';
+import { mapClientToLocal } from '../ui/mobileLayout.js';
 
 /**
  * Input layer — docs §3.2
  * WASD move · Shift run · Space jump · LMB drag look · wheel zoom
  * LMB hold (no drag) charge snowball throw · short click interact
+ * Virtual stick (touch) merges into move.
  * Fishing: setUiOpen locks everything.
  * Config panel: setMoveLocked / setLookLocked independently.
  */
@@ -15,6 +17,9 @@ export function createControlInput(domElement) {
 
   let moveX = 0;
   let moveY = 0;
+  /** External virtual joystick (−1…1). */
+  let stickX = 0;
+  let stickY = 0;
   let jumpPressed = false;
   let runHeld = false;
   let rotateCamera = false;
@@ -44,10 +49,10 @@ export function createControlInput(domElement) {
   let pointerOnCanvas = false;
 
   function updatePointerNorm(clientX, clientY) {
-    const rect = domElement.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
-    const ny = -(((clientY - rect.top) / rect.height) * 2 - 1);
+    const local = mapClientToLocal(domElement, clientX, clientY);
+    if (local.width <= 0 || local.height <= 0) return;
+    const nx = (local.x / local.width) * 2 - 1;
+    const ny = -((local.y / local.height) * 2 - 1);
     pointerNX = Math.min(1, Math.max(-1, nx));
     pointerNY = Math.min(1, Math.max(-1, ny));
   }
@@ -58,8 +63,8 @@ export function createControlInput(domElement) {
       moveY = 0;
       return;
     }
-    let x = 0;
-    let y = 0;
+    let x = stickX;
+    let y = stickY;
     if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
     if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
     if (keys.has('KeyW') || keys.has('ArrowUp')) y += 1;
@@ -72,6 +77,36 @@ export function createControlInput(domElement) {
       moveX = x;
       moveY = y;
     }
+  }
+
+  /**
+   * Keep only the dominant joystick axis so slight diagonals don't spin the camera.
+   * e.g. mostly-right + a bit forward → pure strafe right.
+   * @param {number} x
+   * @param {number} y
+   */
+  function quantizeStickToCardinal(x, y) {
+    const ax = Math.abs(x);
+    const ay = Math.abs(y);
+    if (ax < 1e-4 && ay < 1e-4) return { x: 0, y: 0 };
+    const mag = Math.min(1, Math.hypot(x, y));
+    if (ax > ay) return { x: Math.sign(x) * mag, y: 0 };
+    return { x: 0, y: Math.sign(y) * mag };
+  }
+
+  /**
+   * Virtual joystick axes (−1…1). y+ = forward.
+   * Stick is snapped to one cardinal direction (dominant axis only).
+   * @param {number} x
+   * @param {number} y
+   */
+  function setStick(x, y) {
+    const rawX = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0;
+    const rawY = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0;
+    const q = quantizeStickToCardinal(rawX, rawY);
+    stickX = q.x;
+    stickY = q.y;
+    refreshMove();
   }
 
   function clearLookState() {
@@ -137,6 +172,8 @@ export function createControlInput(domElement) {
     moveLocked = on;
     lookLocked = on;
     if (on) {
+      stickX = 0;
+      stickY = 0;
       moveX = 0;
       moveY = 0;
       jumpPressed = false;
@@ -150,6 +187,8 @@ export function createControlInput(domElement) {
   function setMoveLocked(v) {
     moveLocked = !!v;
     if (moveLocked) {
+      stickX = 0;
+      stickY = 0;
       moveX = 0;
       moveY = 0;
       jumpPressed = false;
@@ -291,6 +330,8 @@ export function createControlInput(domElement) {
 
   function onBlur() {
     keys.clear();
+    stickX = 0;
+    stickY = 0;
     moveX = 0;
     moveY = 0;
     runHeld = false;
@@ -368,6 +409,7 @@ export function createControlInput(domElement) {
     setUiOpen,
     setMoveLocked,
     setLookLocked,
+    setStick,
     setThrowChargeEnabled,
     setThrowAimLock,
     dispose,

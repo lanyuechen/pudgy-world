@@ -14,10 +14,31 @@ body,
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
+/* Touch devices held in portrait: CSS-rotate #app into landscape. */
+html.is-mobile-portrait,
+html.is-mobile-portrait body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+html.is-mobile-portrait #app {
+  position: fixed;
+  width: 100vh;
+  height: 100vw;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+}
+
 #c {
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none;
 }
 
 #loading {
@@ -196,6 +217,71 @@ body,
 /* Hide HP while the settings panel is open */
 #config:has(#config-panel:not([hidden])) .player-hp-bar {
   display: none;
+}
+
+#config:has(#config-panel:not([hidden])) #virtual-joystick {
+  display: none;
+}
+
+/* —— Virtual joystick (touch) —— */
+#virtual-joystick {
+  --vj-size: 128px;
+  --vj-radius: 48px;
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 5;
+  width: var(--vj-size);
+  height: var(--vj-size);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#virtual-joystick[hidden] {
+  display: none;
+}
+
+#virtual-joystick .vj-base {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  border: 2px solid rgba(232, 251, 255, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+#virtual-joystick .vj-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 46%;
+  margin: -23% 0 0 -23%;
+  border-radius: 50%;
+  background: rgba(158, 231, 245, 0.55);
+  border: 2px solid rgba(232, 251, 255, 0.75);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  will-change: transform;
+}
+
+#virtual-joystick.is-active .vj-base {
+  background: rgba(0, 0, 0, 0.38);
+  border-color: rgba(158, 231, 245, 0.45);
+}
+
+#virtual-joystick.is-active .vj-knob {
+  background: rgba(158, 231, 245, 0.78);
+}
+
+@media (max-width: 720px) {
+  #virtual-joystick {
+    --vj-size: 118px;
+    --vj-radius: 44px;
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
 }
 
 .player-hp-track {

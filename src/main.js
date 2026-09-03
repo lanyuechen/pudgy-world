@@ -30,6 +30,9 @@ import {
   getWorldSlideRoots,
   resetSlideRoots,
 } from './ui/sceneTransition.js';
+import { getRenderSize, installMobileLandscape } from './ui/mobileLayout.js';
+
+installMobileLandscape();
 
 const { flat: sceneOptions, scenes, otherGroups } = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
@@ -493,7 +496,10 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
 });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
+{
+  const { width, height } = getRenderSize(canvas);
+  renderer.setSize(width, height);
+}
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1;
@@ -586,9 +592,10 @@ function bindOutlineComposer(scene) {
   outlineComposer?.dispose();
   outlineComposer = createOutlineComposer(renderer, scene, camera);
   const pr = renderer.getPixelRatio();
-  outlineComposer.setSize(window.innerWidth, window.innerHeight, pr);
-  updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
-  world?.water?.setSize?.(window.innerWidth, window.innerHeight, pr);
+  const { width, height } = getRenderSize(canvas);
+  outlineComposer.setSize(width, height, pr);
+  updateHullOutlineViewport(width, height, pr);
+  world?.water?.setSize?.(width, height, pr);
 }
 
 function escapeHtml(text) {
@@ -983,7 +990,8 @@ function animate() {
     }
     if (world.water?.prepareDepth) {
       const pr = renderer.getPixelRatio();
-      world.water.setSize(window.innerWidth, window.innerHeight, pr);
+      const { width, height } = getRenderSize(canvas);
+      world.water.setSize(width, height, pr);
       world.water.prepareDepth(renderer, world.scene, camera);
     }
     if (outlineComposer) outlineComposer.render();
@@ -992,13 +1000,14 @@ function animate() {
 }
 
 function onResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const { width, height } = getRenderSize(canvas);
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(width, height);
   const pr = renderer.getPixelRatio();
-  outlineComposer?.setSize(window.innerWidth, window.innerHeight, pr);
-  updateHullOutlineViewport(window.innerWidth, window.innerHeight, pr);
-  world?.water?.setSize?.(window.innerWidth, window.innerHeight, pr);
+  outlineComposer?.setSize(width, height, pr);
+  updateHullOutlineViewport(width, height, pr);
+  world?.water?.setSize?.(width, height, pr);
   if (configOpen && (configTab === 'showcase' || configTab === 'anim' || configTab === 'effects')) {
     resizePreviewViewport();
   }
