@@ -2,4 +2,3 @@
 /dist/
 scripts/.last-glb-convert.json
 .DS_Store
-package-lock.json
