@@ -27,6 +27,11 @@
           <div class="bar"><div id="loading-bar"></div></div>
         </div>
       </div>
+      <div id="landscape-tip" hidden aria-hidden="true" role="dialog" aria-label="横屏提示">
+        <button type="button" id="landscape-tip-btn">
+          横屏游戏，以获得更好的体验
+        </button>
+      </div>
       <div id="config">
         <div class="player-status" id="player-status">
           <button
@@ -46,6 +51,7 @@
           <div class="config-shell">
             <div class="config-column">
               <nav class="config-nav" aria-label="设置分类">
+                <div class="config-nav-scroll">
                 <button
                   type="button"
                   class="config-nav-btn is-active"
@@ -173,6 +179,7 @@
                     />
                   </svg>
                 </button>
+                </div>
               </nav>
               <div class="config-body">
                 <div id="config-pane-player" class="config-pane" data-pane="player">

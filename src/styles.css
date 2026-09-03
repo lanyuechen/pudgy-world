@@ -14,27 +14,38 @@ body,
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
-/* Touch devices held in portrait: CSS-rotate #app into landscape. */
-html.is-mobile-portrait,
-html.is-mobile-portrait body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+#landscape-tip {
   position: fixed;
   inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 22, 30, 0.82);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
 }
 
-html.is-mobile-portrait #app {
-  position: fixed;
-  /* Landscape box: after rotate(90deg), fills the portrait viewport without stretch. */
-  width: 100vh;
-  height: 100vw;
-  width: 100dvh;
-  height: 100dvw;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(90deg);
-  transform-origin: center center;
+#landscape-tip[hidden] {
+  display: none;
+}
+
+#landscape-tip-btn {
+  appearance: none;
+  max-width: min(320px, 88vw);
+  padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #2a6a7a, #163844);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  color: #e8fbff;
+  font: 600 15px/1.45 'Segoe UI', system-ui, sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+
+#landscape-tip-btn:active {
+  transform: scale(0.98);
 }
 
 #c {
@@ -388,6 +399,7 @@ html.is-mobile-portrait #app {
   display: flex;
   flex: 0 0 50vw;
   width: 50vw;
+  height: 100%;
   min-width: 0;
   min-height: 0;
 }
@@ -452,13 +464,31 @@ html.is-mobile-portrait #app {
 .config-nav {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
   flex: 0 0 60px;
-  /* top(12) + avatar(40) + gap(32) = 84 */
-  padding: 84px 12px 16px;
+  width: 60px;
+  min-height: 0;
+  height: 100%;
+  /* Reserve space under avatar; scroll stays below this padding */
+  padding: 84px 0 0;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.config-nav-scroll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 12px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .config-nav-btn {
@@ -466,8 +496,10 @@ html.is-mobile-portrait #app {
   position: relative;
   display: grid;
   place-items: center;
+  flex: 0 0 36px;
   width: 36px;
   height: 36px;
+  min-height: 36px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 8px;
