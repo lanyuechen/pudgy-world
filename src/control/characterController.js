@@ -46,6 +46,7 @@ export function createCharacterController(character, { physics } = {}) {
   const _physicsFeet = new THREE.Vector3().copy(character.position);
   const _displayVel = new THREE.Vector3();
   const _knockback = new THREE.Vector2();
+  let moveSpeedScale = 1;
 
   function yawToWorldForward(yawRad, out) {
     out.set(Math.sin(yawRad), 0, Math.cos(yawRad));
@@ -167,7 +168,7 @@ export function createCharacterController(character, { physics } = {}) {
       jumpStarted = true;
     }
 
-    const speed = input.run ? CONTROL.runSpeed : CONTROL.walkSpeed;
+    const speed = (input.run ? CONTROL.runSpeed : CONTROL.walkSpeed) * moveSpeedScale;
     let dx;
     let dy;
     let dz;
@@ -282,6 +283,9 @@ export function createCharacterController(character, { physics } = {}) {
     snapDisplayPosition,
     updateDisplayPosition,
     applyKnockback,
+    setMoveSpeedScale(scale) {
+      moveSpeedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+    },
     getPhysicsFeet: () => _physicsFeet,
     get isGrounded() {
       return grounded && !airborne;

@@ -5,7 +5,6 @@ import { COMBAT } from '../config/combatConfig.js';
 import { CONTROL, PLAYER } from '../config/playerConfig.js';
 import { createEnemyAiWorld, rollEnemyPersonality } from './enemyAi/createEnemyAiWorld.js';
 import { chargeLevelToSpeed, computeBallisticVelocity } from './ballisticAim.js';
-import { pitchTToLaunchSin, computeLockedThrowVelocity } from './targetSnap.js';
 
 const ENEMY_TURN_SPEED = THREE.MathUtils.degToRad(240);
 const _feet = { x: 0, y: 0, z: 0 };
@@ -198,8 +197,10 @@ export async function createEnemyCrowd({
   const aiWorld = createEnemyAiWorld();
   aiWorld.setColliders(colliders);
   let lastPlayerX = 0;
+  let lastPlayerY = 0;
   let lastPlayerZ = 0;
   let playerVelX = 0;
+  let playerVelY = 0;
   let playerVelZ = 0;
 
   await mapPool(placements, ASSET_LOAD_CONCURRENCY, async (p) => {
@@ -389,7 +390,7 @@ export async function createEnemyCrowd({
   }
 
   /**
-   * Player-like throw: variable charge + pitch / ballistic arc toward a lead aim point.
+   * Aim at the player's live 3D body (including mid-air), not the ground projection.
    */
   function throwAtPlayer(c, playerPos) {
     if (!spawnSnowball) return;
@@ -400,47 +401,44 @@ export async function createEnemyCrowd({
       c.root.position.z,
     );
 
+    // Chest / body aim height above feet — follows the player into the air.
+    const bodyOffset = (COMBAT.enemyAimHeight ?? 1.4) * 0.55;
+    const aimY = playerPos.y + bodyOffset;
     const dx = playerPos.x - _throwOrigin.x;
+    const dy = aimY - _throwOrigin.y;
     const dz = playerPos.z - _throwOrigin.z;
-    const dist = Math.hypot(dx, dz);
+    const distH = Math.hypot(dx, dz);
+    const dist3 = Math.hypot(dx, dy, dz);
     const throwRange = COMBAT.enemyThrowRange ?? COMBAT.enemyAttackRange ?? 24;
 
-    // Lead time scales with distance (and estimated flight time).
-    const lead = THREE.MathUtils.clamp(dist / 32, 0.12, 0.6);
+    // Lead in full 3D so jumping / falling players are tracked.
+    const lead = THREE.MathUtils.clamp(distH / 32, 0.12, 0.6);
     _throwAim.set(
       playerPos.x + playerVelX * lead,
-      playerPos.y + 0.85,
+      aimY + playerVelY * lead,
       playerPos.z + playerVelZ * lead,
     );
 
-    // Charge by range: close = soft lob, far = full power (+ jitter).
-    let charge = THREE.MathUtils.clamp(dist / throwRange, 0.18, 1);
-    charge = THREE.MathUtils.clamp(charge + (Math.random() - 0.5) * 0.2, 0.12, 1);
-    const speed = chargeLevelToSpeed(charge);
-
-    // Mostly true ballistic aim; sometimes a deliberate higher lob like a charged player throw.
-    if (Math.random() < 0.3) {
-      const pitchT = THREE.MathUtils.clamp(
-        0.25 + (dist / throwRange) * 0.55 + (Math.random() - 0.5) * 0.25,
-        0,
+    // Charge by 3D range; add power when the aim point is above the thrower.
+    let charge = THREE.MathUtils.clamp(dist3 / throwRange, 0.18, 1);
+    if (dy > 0.5) {
+      charge = THREE.MathUtils.clamp(
+        charge + THREE.MathUtils.clamp(dy / 8, 0, 0.35),
+        0.12,
         1,
       );
-      computeLockedThrowVelocity(
-        _throwOrigin,
-        _throwAim,
-        speed,
-        pitchTToLaunchSin(pitchT),
-        _throwVel,
-      );
-    } else {
-      computeBallisticVelocity(
-        _throwOrigin,
-        _throwAim,
-        speed,
-        _throwVel,
-        PLAYER.gravity,
-      );
     }
+    charge = THREE.MathUtils.clamp(charge + (Math.random() - 0.5) * 0.15, 0.12, 1);
+    const speed = chargeLevelToSpeed(charge);
+
+    // Always solve a true ballistic arc to the 3D aim point (locked pitch ignores height).
+    computeBallisticVelocity(
+      _throwOrigin,
+      _throwAim,
+      speed,
+      _throwVel,
+      PLAYER.gravity,
+    );
 
     spawnSnowball(_throwOrigin, {
       velocity: _throwVel.clone(),
@@ -828,16 +826,18 @@ export async function createEnemyCrowd({
       if (Number.isFinite(playerPos.y)) refGroundY = playerPos.y;
       if (dt > 1e-6) {
         playerVelX = (playerPos.x - lastPlayerX) / dt;
+        playerVelY = (playerPos.y - lastPlayerY) / dt;
         playerVelZ = (playerPos.z - lastPlayerZ) / dt;
       }
       lastPlayerX = playerPos.x;
+      lastPlayerY = playerPos.y;
       lastPlayerZ = playerPos.z;
 
       syncActiveEnemies();
 
       aiWorld.setContext({
         playerPos,
-        playerVel: { x: playerVelX, z: playerVelZ },
+        playerVel: { x: playerVelX, y: playerVelY, z: playerVelZ },
       });
 
       for (const c of controllers) {

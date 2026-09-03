@@ -11,9 +11,16 @@ import { createSkillBar } from '../ui/skillBar.js';
 import { createPlayerSkillSystem } from '../combat/playerSkills.js';
 import { createCombatHud } from '../ui/combatHud.js';
 import { createCombatHitFeedback } from '../ui/combatHitFeedback.js';
+import { createPlayerHpBar } from '../ui/playerHpBar.js';
 import { pitchTToLaunchSin, computeLockedThrowVelocity } from '../combat/targetSnap.js';
 import { COMBAT } from '../config/combatConfig.js';
-import { chargeLevelToSpeed, predictCrosshairTarget } from '../combat/ballisticAim.js';
+import { chargeLevelToSpeed, predictCrosshairTarget, solveLockOnBallistic, applyAccuracyElevationJitter } from '../combat/ballisticAim.js';
+import {
+  moveSpeedMultiplier,
+  playerMaxHp,
+  playerSnowballDamage,
+  throwSpeedMultiplier,
+} from '../config/playerStats.js';
 import { createTrajectoryPreview } from '../combat/trajectoryPreview.js';
 import { createFishingSession } from '../fishing/fishingSession.js';
 import { createFishingPrompt } from '../ui/fishingPrompt.js';
@@ -136,6 +143,11 @@ export async function createPlayerSystem({
   const combatHud = createCombatHud();
   const combatHitFeedback = createCombatHitFeedback();
   const combatActive = Boolean(enemies);
+  const playerHpBar = createPlayerHpBar(document.getElementById('player-hp-bar'));
+  let maxHp = playerMaxHp();
+  let hp = maxHp;
+  playerHpBar.set(hp, maxHp);
+  playerHpBar.setVisible(true);
   const quarksFx = combatActive ? await createQuarksFx(scene, loadingManager) : null;
   minimap.setVisible(combatActive);
   combatHud.setVisible(combatActive);
@@ -151,6 +163,9 @@ export async function createPlayerSystem({
   const _aimPoint = new THREE.Vector3();
   const _launchVel = new THREE.Vector3();
   const _cameraRight = new THREE.Vector3();
+  const _camFwd = new THREE.Vector3();
+  const _lockNdc = new THREE.Vector3();
+  const _lockLosDir = new THREE.Vector3();
   const _mouseNdc = new THREE.Vector2();
   const interactRay = new THREE.Raycaster();
   let aimYawRad = null;
@@ -167,6 +182,16 @@ export async function createPlayerSystem({
   let configInvincible = false;
   const playerMeshes = collectPlayerMeshes(playerRoot);
 
+  function syncHpFromVitality() {
+    const nextMax = playerMaxHp();
+    if (nextMax === maxHp) return;
+    const delta = nextMax - maxHp;
+    maxHp = nextMax;
+    if (delta > 0) hp += delta;
+    else hp = Math.min(hp, maxHp);
+    playerHpBar.set(hp, maxHp);
+  }
+
   const snowballs = createSnowballSystem(scene, {
     getColliders: () => colliders,
     isSourceObject: (obj) => {
@@ -182,7 +207,7 @@ export async function createPlayerSystem({
       combatActive
         ? {
             id: 'player',
-            alive: !configInvincible && playerHitCooldown <= 0,
+            alive: hp > 0 && !configInvincible && playerHitCooldown <= 0,
             sourceRoot: playerRoot,
             meshes: playerMeshes,
           }
@@ -201,15 +226,24 @@ export async function createPlayerSystem({
       }
     },
     onPlayerHit: (ball) => {
-      if (configInvincible) return;
+      if (configInvincible || hp <= 0) return;
       if (ball?.sourceId === 'player' || playerHitCooldown > 0) return;
-      applyPlayerHit(ball?.sourceRoot ?? null, ball?.velocity ?? null);
+      applyPlayerHit(
+        ball?.sourceRoot ?? null,
+        ball?.velocity ?? null,
+        ball?.damage ?? COMBAT.snowballDamage,
+      );
     },
   });
 
-  function applyPlayerHit(sourceRoot = null, velocity = null) {
-    if (configInvincible || playerHitCooldown > 0) return;
+  function applyPlayerHit(sourceRoot = null, velocity = null, damageAmount = COMBAT.snowballDamage) {
+    if (configInvincible || playerHitCooldown > 0 || hp <= 0) return;
     playerHitCooldown = COMBAT.playerHitInvuln ?? 0.55;
+    const dmg = Math.max(0, Number(damageAmount) || 0);
+    if (dmg > 0) {
+      hp = Math.max(0, hp - dmg);
+      playerHpBar.set(hp, maxHp);
+    }
     const dir = velocity?.clone?.() ?? new THREE.Vector3();
     dir.y = 0;
     if (dir.lengthSq() < 1e-6 && sourceRoot) {
@@ -236,7 +270,8 @@ export async function createPlayerSystem({
       onKill: () => combatHud.addKill(),
       onWaveStart: (total) => combatHud.resetWave(total),
       onEnemyDeath: (position) => quarksFx?.playDeathAt(position),
-      onPlayerContact: (enemy) => applyPlayerHit(enemy?.root ?? null, null),
+      onPlayerContact: (enemy) =>
+        applyPlayerHit(enemy?.root ?? null, null, COMBAT.enemyMeleeDamage ?? 1),
       physics,
     });
   }
@@ -247,11 +282,17 @@ export async function createPlayerSystem({
     buildThrowVelocity,
   });
 
+  let preferBallisticAim = false;
+  let pendingThrowAnim = false;
+
   const skillBar = createSkillBar({
     onSelectSkill: (id) => {
       if (skills.getSelected() === id) skills.selectNormal();
       else skills.selectSkill(id);
       skillBar.sync(skills.getUiState());
+    },
+    onAttack: () => {
+      performAutoAttack();
     },
   });
   skillBar.setVisible(combatActive);
@@ -295,7 +336,7 @@ export async function createPlayerSystem({
 
   /**
    * Config panel camera / move lock.
-   * @param {null | 'skin' | 'scene' | 'showcase' | 'effects' | 'controls' | 'settings' | 'skills'} mode
+   * @param {null | 'player' | 'skin' | 'scene' | 'showcase' | 'effects' | 'controls' | 'settings' | 'skills'} mode
    * @param {{ box?: import('three').Box3, snap?: boolean, fromCurrent?: boolean }} [opts]
    */
   function setConfigMode(mode, opts = {}) {
@@ -307,7 +348,7 @@ export async function createPlayerSystem({
       playerCamera.enterSkinPreview();
       return;
     }
-    if (mode === 'controls' || mode === 'settings' || mode === 'skills') {
+    if (mode === 'player' || mode === 'controls' || mode === 'settings' || mode === 'skills') {
       input.setMoveLocked(false);
       input.setLookLocked(false);
       playerCamera.setUiOpen(false);
@@ -458,10 +499,156 @@ export async function createPlayerSystem({
 
   function buildThrowVelocity(chargeLevel, out) {
     getHandWorldPosition(_handPos);
-    const speed = chargeLevelToSpeed(chargeLevel);
+    const strengthMul = throwSpeedMultiplier();
+    const speed = chargeLevelToSpeed(chargeLevel) * strengthMul;
     getChargeAimPoint(_aimPoint);
+    if (preferBallisticAim) {
+      const vmax = (COMBAT.throwSpeedMax ?? 22) * strengthMul;
+      solveLockOnBallistic(_handPos, _aimPoint, out, PLAYER.gravity, vmax);
+      return out;
+    }
     const pitchSin = pitchTToLaunchSin(throwPitchT);
     computeLockedThrowVelocity(_handPos, _aimPoint, speed, pitchSin, out);
+    return out;
+  }
+
+  function isUnderObject(obj, root) {
+    if (!root || !obj) return false;
+    let p = obj;
+    while (p) {
+      if (p === root) return true;
+      p = p.parent;
+    }
+    return false;
+  }
+
+  /**
+   * Lock target must be on-screen (camera frustum) and have clear LOS from the camera.
+   */
+  function isEnemyInSight(enemy) {
+    const root = enemy?.sourceRoot;
+    if (!root) return false;
+
+    const body = (COMBAT.enemyAimHeight ?? 1.4) * 0.55;
+    _aimPoint.set(root.position.x, root.position.y + body, root.position.z);
+
+    camera.updateMatrixWorld(true);
+    _lockNdc.copy(_aimPoint).project(camera);
+    // Outside NDC rectangle / behind camera clip
+    if (
+      !Number.isFinite(_lockNdc.x) ||
+      !Number.isFinite(_lockNdc.y) ||
+      !Number.isFinite(_lockNdc.z) ||
+      Math.abs(_lockNdc.x) > 1.02 ||
+      Math.abs(_lockNdc.y) > 1.02 ||
+      _lockNdc.z < -1 ||
+      _lockNdc.z > 1
+    ) {
+      return false;
+    }
+
+    camera.getWorldDirection(_camFwd);
+    _lockLosDir.subVectors(_aimPoint, camera.position);
+    const dist = _lockLosDir.length();
+    if (dist < 0.15) return true;
+    if (_lockLosDir.dot(_camFwd) <= 0) return false;
+
+    if (!colliders.length) return true;
+
+    _lockLosDir.multiplyScalar(1 / dist);
+    interactRay.set(camera.position, _lockLosDir);
+    interactRay.near = 0.08;
+    interactRay.far = Math.max(0.1, dist - 0.4);
+    const hits = interactRay.intersectObjects(colliders, false);
+    for (const hit of hits) {
+      const obj = hit.object;
+      if (isUnderObject(obj, playerRoot)) continue;
+      if (isUnderObject(obj, root)) continue;
+      if (enemy.meshes?.some((m) => obj === m || isUnderObject(obj, m))) continue;
+      return false;
+    }
+    return true;
+  }
+
+  function findNearestEnemyTarget() {
+    if (!enemies) return null;
+    const targets = enemies.getEntityTargets?.() ?? [];
+    const px = playerRoot.position.x;
+    const py = playerRoot.position.y;
+    const pz = playerRoot.position.z;
+    let best = null;
+    let bestDist = Infinity;
+    for (const t of targets) {
+      if (!t?.alive || !t.sourceRoot) continue;
+      if (!isEnemyInSight(t)) continue;
+      const p = t.sourceRoot.position;
+      const d = Math.hypot(p.x - px, p.y - py, p.z - pz);
+      if (d < bestDist) {
+        bestDist = d;
+        best = t;
+      }
+    }
+    return best;
+  }
+
+  function aimPointAtEnemy(enemy, out) {
+    const p = enemy.sourceRoot.position;
+    const body = (COMBAT.enemyAimHeight ?? 1.4) * 0.55;
+    out.set(p.x, p.y + body, p.z);
+    return out;
+  }
+
+  function faceTowardAim(aim) {
+    const dx = aim.x - playerRoot.position.x;
+    const dz = aim.z - playerRoot.position.z;
+    if (dx * dx + dz * dz < 1e-6) return;
+    playerRoot.rotation.y = Math.atan2(dx, dz);
+  }
+
+  /**
+   * Attack button: lock nearest enemy, throw snowball or cast selected skill.
+   * No attack cooldown — skill CDs still apply (falls back to normal throw).
+   */
+  function performAutoAttack() {
+    if (!combatActive || configInvincible) return;
+    if (fishingBusy || fishingSession.active || animator.isFishing) return;
+    if (skills.isExecuting()) return;
+
+    const enemy = findNearestEnemyTarget();
+    if (!enemy) return;
+
+    // Face first so hand bone / throw origin match aim direction.
+    aimPointAtEnemy(enemy, _aimPoint);
+    faceTowardAim(_aimPoint);
+    playerRoot.updateMatrixWorld(true);
+
+    aimPointAtEnemy(enemy, _aimPoint);
+    chargeAimPoint = _aimPoint.clone();
+    chargeBaseAimPoint = chargeAimPoint.clone();
+    preferBallisticAim = true;
+
+    // Skills still take a charge hint; lock-on snowball uses solveLockOnBallistic (≤ full charge).
+    const chargeLevel = 1;
+
+    const skillId = skills.getSelected();
+    let usedSkill = false;
+    if (skillId) {
+      usedSkill = skills.tryCast({
+        skillId,
+        chargeLevel,
+        aimPoint: chargeAimPoint.clone(),
+        sourceRoot: playerRoot,
+      });
+    }
+    if (!usedSkill) {
+      throwSnowball(chargeLevel);
+    }
+
+    pendingThrowAnim = true;
+    preferBallisticAim = false;
+    chargeAimPoint = null;
+    chargeBaseAimPoint = null;
+    skillBar.sync(skills.getUiState());
   }
 
   function updateTrajectoryPreview(chargeLevel) {
@@ -486,11 +673,13 @@ export async function createPlayerSystem({
   function throwSnowball(chargeLevel = 0) {
     if (!chargeAimPoint) return;
     buildThrowVelocity(chargeLevel, _launchVel);
+    applyAccuracyElevationJitter(_launchVel);
     getHandWorldPosition(_handPos);
     snowballs.spawn(_handPos, {
       velocity: _launchVel,
       sourceId: 'player',
       sourceRoot: playerRoot,
+      damage: playerSnowballDamage(),
     });
   }
 
@@ -524,6 +713,9 @@ export async function createPlayerSystem({
   function update(dt) {
     const frame = input.consume();
     const fixedDt = CONTROL.fixedDt;
+
+    controller.setMoveSpeedScale(moveSpeedMultiplier());
+    syncHpFromVitality();
 
     if (frame.pointerOnCanvas || frame.isCharging || frame.pointerDown) {
       framePointerX = frame.pointerClientX;
@@ -579,7 +771,10 @@ export async function createPlayerSystem({
     }
 
     let throwStarted = false;
-    if (frame.chargeRelease && throwCooldown <= 0 && chargeAimPoint) {
+    if (pendingThrowAnim) {
+      throwStarted = true;
+      pendingThrowAnim = false;
+    } else if (frame.chargeRelease && throwCooldown <= 0 && chargeAimPoint) {
       throwCooldown = PLAYER.throwCooldown;
       if (tryThrowSkill(frame.chargeRelease.chargeLevel)) {
         throwStarted = true;
@@ -700,9 +895,11 @@ export async function createPlayerSystem({
     minimap.dispose();
     combatHud.dispose();
     combatHitFeedback.dispose();
+    playerHpBar.dispose();
     physics.dispose();
     minimap.setVisible(false);
     combatHud.setVisible(false);
+    playerHpBar.setVisible(false);
     fishingPrompt.hide();
     scene.remove(playerRoot);
   }

@@ -20,6 +20,7 @@ import { createEffectPreview } from './ui/effectPreview.js';
 import { createPlayerPortrait } from './ui/playerPortrait.js';
 import { createGameSettingsPanel } from './ui/gameSettingsPanel.js';
 import { createSkillInfoPanel } from './ui/skillInfoPanel.js';
+import { createPlayerInfoPanel } from './ui/playerInfoPanel.js';
 import { applyGameSettings, loadGameSettings } from './config/gameSettings.js';
 import { getAnimOptions } from './config/animConfig.js';
 import { getEffectOptions } from './config/effectsConfig.js';
@@ -62,6 +63,8 @@ const configToggleAvatarCanvas = document.getElementById('config-toggle-avatar-c
 let configAvatarPortrait = null;
 const configPanel = document.getElementById('config-panel');
 const traitsPanel = document.getElementById('traits-panel');
+const playerInfoPanelEl = document.getElementById('player-info-panel');
+const panePlayer = document.getElementById('config-pane-player');
 const paneScene = document.getElementById('config-pane-scene');
 const paneSkin = document.getElementById('config-pane-skin');
 const paneShowcase = document.getElementById('config-pane-showcase');
@@ -74,6 +77,8 @@ const skillsPanelEl = document.getElementById('skills-panel');
 const settingsPanelEl = document.getElementById('settings-panel');
 const skinTabBtn = document.getElementById('config-tab-skin');
 const navButtons = [...document.querySelectorAll('.config-nav-btn')];
+
+const playerInfoPanel = createPlayerInfoPanel(playerInfoPanelEl);
 
 const scenePanel = createConfigSectionPanel(scenePanelEl, {
   accordion: false,
@@ -173,8 +178,8 @@ function resizePreviewViewport() {
 
 syncScenePickers(DEFAULT_SCENE_ID);
 
-/** @type {'scene' | 'skin' | 'showcase' | 'anim' | 'controls' | 'skills' | 'effects' | 'settings'} */
-let configTab = 'scene';
+/** @type {'player' | 'scene' | 'skin' | 'showcase' | 'anim' | 'controls' | 'skills' | 'effects' | 'settings'} */
+let configTab = 'player';
 let configOpen = false;
 /** @type {string|null} */
 let showcaseSelectedId = defaultShowcaseOption?.id ?? null;
@@ -203,6 +208,7 @@ function syncNavUi() {
     btn.classList.toggle('is-active', active);
     btn.setAttribute('aria-pressed', String(active));
   }
+  panePlayer.hidden = configTab !== 'player';
   paneScene.hidden = configTab !== 'scene';
   paneSkin.hidden = configTab !== 'skin';
   paneShowcase.hidden = configTab !== 'showcase';
@@ -302,6 +308,23 @@ function applyConfigTab(tab, { force = false } = {}) {
   configTab = tab;
   syncNavUi();
   if (!configOpen) return;
+
+  if (tab === 'player') {
+    if (playerSystem) {
+      if (exploreViewSnapshot) {
+        explore.controls.target.copy(exploreViewSnapshot.target);
+        explore.camera.position.copy(exploreViewSnapshot.position);
+        explore.controls.enabled = false;
+        exploreViewSnapshot = null;
+      }
+      playerSystem.setConfigMode('player');
+    } else {
+      applySceneOverviewFraming();
+    }
+    playerInfoPanel.refresh();
+    playerInfoPanel.updateLayout();
+    return;
+  }
 
   if (tab === 'skin') {
     if (!playerSystem) {
@@ -423,7 +446,7 @@ for (const btn of navButtons) {
   btn.addEventListener('click', () => {
     if (btn.disabled) return;
     applyConfigTab(
-      /** @type {'scene'|'skin'|'showcase'|'anim'|'controls'|'skills'|'effects'|'settings'} */ (btn.dataset.tab),
+      /** @type {'player'|'scene'|'skin'|'showcase'|'anim'|'controls'|'skills'|'effects'|'settings'} */ (btn.dataset.tab),
       {
         force: true,
       },

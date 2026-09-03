@@ -2,7 +2,7 @@ import { NPC_ANIMS, NPC_MODELS } from './npcConfig.js';
 
 /** Survival combat tuning. */
 export const COMBAT = {
-  enemyHp: 3,
+  enemyHp: 100,
   enemyAttackRange: 24,
   enemyDetectRange: 28,
   /** Max distance used to scale enemy throw charge 0–1 (m). */
@@ -84,7 +84,7 @@ export const COMBAT = {
   /** Top-down map bake resolution (px). */
   minimapBakeSize: 512,
 
-  snowballDamage: 1,
+  snowballDamage: 30,
   /** Initial speed at chargeLevel 0 / 1 (m/s). */
   throwSpeedMin: 8,
   throwSpeedMax: 22,

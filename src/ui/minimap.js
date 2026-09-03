@@ -11,7 +11,7 @@ const MAP_ICON =
 
 /**
  * Circular minimap — baked map window centered on player.
- * Expanded by default; toggle via the right-side map button.
+ * Toggle sits at bottom-right; panel expands / collapses toward top-left.
  */
 export function createMinimap({
   mapRoot = null,

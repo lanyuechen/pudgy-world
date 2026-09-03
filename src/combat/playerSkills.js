@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { COMBAT } from '../config/combatConfig.js';
 import { PLAYER } from '../config/playerConfig.js';
 import { SKILLS, SKILL_IDS } from '../config/skillConfig.js';
+import { applyAccuracyElevationJitter } from './ballisticAim.js';
+import { playerSnowballDamage } from '../config/playerStats.js';
 
 const _vel = new THREE.Vector3();
 const _origin = new THREE.Vector3();
@@ -64,12 +65,15 @@ export function createPlayerSkillSystem({
   }
 
   function spawnPlayerBall(origin, velocity, opts = {}) {
+    if (opts.accuracyJitter !== false) {
+      applyAccuracyElevationJitter(velocity);
+    }
     snowballs.spawn(origin, {
       velocity,
       sourceId: 'player',
       sourceRoot: opts.sourceRoot,
       radius: opts.radius,
-      damage: opts.damage,
+      damage: opts.damage ?? playerSnowballDamage(),
     });
   }
 
@@ -108,7 +112,7 @@ export function createPlayerSkillSystem({
           -(10 + Math.random() * 8),
           (Math.random() - 0.5) * 2 * drift,
         );
-        spawnPlayerBall(_origin, _vel.clone(), { sourceRoot });
+        spawnPlayerBall(_origin, _vel.clone(), { sourceRoot, accuracyJitter: false });
       });
     }
     schedule(cfg.duration, () => {
@@ -123,7 +127,7 @@ export function createPlayerSkillSystem({
     spawnPlayerBall(_origin, _vel.clone(), {
       sourceRoot,
       radius: PLAYER.snowballRadius * cfg.sizeScale,
-      damage: COMBAT.snowballDamage * cfg.damageScale,
+      damage: playerSnowballDamage() * cfg.damageScale,
     });
     executing = false;
   }
