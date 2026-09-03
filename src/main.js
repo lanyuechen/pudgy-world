@@ -490,39 +490,74 @@ effectPreview = createEffectPreview(effectsCanvas, loadingManager, {
   statusEl: effectsStatusEl,
 });
 
+const initialGameSettings = loadGameSettings();
+
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: true,
+  antialias: initialGameSettings.antialias,
   powerPreference: 'high-performance',
 });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 {
   const { width, height } = getRenderSize(canvas);
-  renderer.setSize(width, height);
+  renderer.setSize(width, height, false);
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
 }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1;
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = initialGameSettings.shadows;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const explore = createExploreCamera(canvas);
 const camera = explore.camera;
 
+/** @type {import('./config/gameSettings.js').GameSettings} */
+let liveGameSettings = initialGameSettings;
+/** Fallback camera.far when distance cull is off (updated per scene). */
+let sceneBaseFar = camera.far;
+/** @type {null | object} */
+let world = null;
+/** Outline composer is bound per active scene (normals + color Roberts, Unity Outlines). */
+let outlineComposer = null;
+
+/**
+ * @param {import('./config/gameSettings.js').GameSettings} settings
+ */
+function applyGraphicsSettings(settings) {
+  liveGameSettings = settings;
+  renderer.shadowMap.enabled = settings.shadows;
+  if (world?.lights?.sun) {
+    world.lights.sun.castShadow = settings.shadows;
+  }
+  outlineComposer?.setPpEnabled(settings.postProcessOutline);
+
+  const far = settings.distanceCullEnabled
+    ? settings.distanceCullDistance
+    : sceneBaseFar;
+  if (Math.abs(camera.far - far) > 1e-3) {
+    camera.far = far;
+    camera.updateProjectionMatrix();
+  }
+}
+
 if (settingsPanelEl) {
   gameSettingsPanel = createGameSettingsPanel(settingsPanelEl, {
     exploreControls: explore.controls,
+    onChange: (s) => {
+      applyGraphicsSettings(s);
+    },
   });
+  liveGameSettings = loadGameSettings();
 } else {
-  applyGameSettings(loadGameSettings());
+  liveGameSettings = applyGameSettings(loadGameSettings());
 }
+applyGraphicsSettings(liveGameSettings);
 
 if (skillsPanelEl) {
   skillInfoPanel = createSkillInfoPanel(skillsPanelEl);
 }
-
-/** Outline composer is bound per active scene (normals + color Roberts, Unity Outlines). */
-let outlineComposer = null;
 
 /** @type {Map<string, object>} */
 const cache = new Map();
@@ -575,7 +610,6 @@ function evictOtherScenes(keepId) {
     cache.delete(id);
   }
 }
-let world = null;
 let playerSystem = null;
 let traitCustomizer = null;
 let currentId = null;
@@ -594,6 +628,7 @@ function bindOutlineComposer(scene) {
   const pr = renderer.getPixelRatio();
   const { width, height } = getRenderSize(canvas);
   outlineComposer.setSize(width, height, pr);
+  outlineComposer.setPpEnabled(liveGameSettings.postProcessOutline);
   updateHullOutlineViewport(width, height, pr);
   world?.water?.setSize?.(width, height, pr);
 }
@@ -766,7 +801,10 @@ async function attachPlayer(next, { syncCamera = true, keepCamera = false } = {}
 
   explore.controls.enabled = false;
   if (next.cameraView?.far) {
-    camera.far = next.cameraView.far;
+    sceneBaseFar = next.cameraView.far;
+    camera.far = liveGameSettings.distanceCullEnabled
+      ? liveGameSettings.distanceCullDistance
+      : sceneBaseFar;
     camera.updateProjectionMatrix();
   }
   if (!transitioning) setProgress(0.92, '生成角色…');
@@ -817,6 +855,7 @@ async function activateWorld(next, id, { pushHash }) {
   world = next;
   currentId = id;
   bindOutlineComposer(next.scene);
+  applyGraphicsSettings(liveGameSettings);
   await attachPlayer(next);
   if (pushHash) {
     const nextHash = `#${encodeURIComponent(id)}`;
@@ -878,6 +917,7 @@ async function loadScene(id, { pushHash = true, useLoading } = {}) {
       world = next;
       currentId = id;
       bindOutlineComposer(next.scene);
+      applyGraphicsSettings(liveGameSettings);
       const overviewBox = getSceneBounds(next);
       frameExploreInRightHalf(camera, explore.controls, overviewBox);
       explore.controls.enabled = false;
@@ -994,7 +1034,7 @@ function animate() {
       world.water.setSize(width, height, pr);
       world.water.prepareDepth(renderer, world.scene, camera);
     }
-    if (outlineComposer) outlineComposer.render();
+    if (outlineComposer && liveGameSettings.postProcessOutline) outlineComposer.render();
     else renderer.render(world.scene, camera);
   }
 }
@@ -1003,7 +1043,10 @@ function onResize() {
   const { width, height } = getRenderSize(canvas);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(width, height);
+  renderer.setSize(width, height, false);
+  // Keep CSS 100% sizing — don't let previous setSize inline styles fight mobile layout.
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
   const pr = renderer.getPixelRatio();
   outlineComposer?.setSize(width, height, pr);
   updateHullOutlineViewport(width, height, pr);
@@ -1014,6 +1057,8 @@ function onResize() {
   if (configOpen && !transitioning) applyConfigTab(configTab, { force: true });
 }
 window.addEventListener('resize', onResize);
+// Apply mobile layout size after first paint (classes may have just synced).
+requestAnimationFrame(() => onResize());
 
 syncNavUi();
 animate();

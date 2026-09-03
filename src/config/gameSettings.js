@@ -1,10 +1,23 @@
 import { CONTROL } from './playerConfig.js';
 
-export const GAME_SETTINGS_KEY = 'pudgyworld.gameSettings.v1';
+export const GAME_SETTINGS_KEY = 'pudgyworld.gameSettings.v2';
 
 /** @typedef {'cameraFollow' | 'independent'} ThirdPersonYawMode */
 
-/** @typedef {{ thirdPersonYawMode: ThirdPersonYawMode, mouseSensitivity: number, invertLookX: boolean, invertLookY: boolean, zoomSensitivity: number }} GameSettings */
+/**
+ * @typedef {{
+ *   thirdPersonYawMode: ThirdPersonYawMode,
+ *   mouseSensitivity: number,
+ *   invertLookX: boolean,
+ *   invertLookY: boolean,
+ *   zoomSensitivity: number,
+ *   postProcessOutline: boolean,
+ *   shadows: boolean,
+ *   antialias: boolean,
+ *   distanceCullEnabled: boolean,
+ *   distanceCullDistance: number,
+ * }} GameSettings
+ */
 
 /** @type {GameSettings} */
 export const GAME_SETTINGS_DEFAULTS = Object.freeze({
@@ -13,6 +26,11 @@ export const GAME_SETTINGS_DEFAULTS = Object.freeze({
   invertLookX: false,
   invertLookY: false,
   zoomSensitivity: 0.01,
+  postProcessOutline: true,
+  shadows: true,
+  antialias: true,
+  distanceCullEnabled: false,
+  distanceCullDistance: 80,
 });
 
 function clamp(v, lo, hi) {
@@ -41,6 +59,20 @@ export function normalizeGameSettings(raw) {
       0.003,
       0.04,
     ),
+    postProcessOutline:
+      src.postProcessOutline === undefined
+        ? GAME_SETTINGS_DEFAULTS.postProcessOutline
+        : Boolean(src.postProcessOutline),
+    shadows:
+      src.shadows === undefined ? GAME_SETTINGS_DEFAULTS.shadows : Boolean(src.shadows),
+    antialias:
+      src.antialias === undefined ? GAME_SETTINGS_DEFAULTS.antialias : Boolean(src.antialias),
+    distanceCullEnabled: Boolean(src.distanceCullEnabled),
+    distanceCullDistance: clamp(
+      Number(src.distanceCullDistance) || GAME_SETTINGS_DEFAULTS.distanceCullDistance,
+      20,
+      400,
+    ),
   };
 }
 
@@ -52,7 +84,9 @@ export function loadGameSettings() {
     return { ...GAME_SETTINGS_DEFAULTS };
   }
   try {
-    const raw = localStorage.getItem(GAME_SETTINGS_KEY);
+    const raw =
+      localStorage.getItem(GAME_SETTINGS_KEY) ||
+      localStorage.getItem('pudgyworld.gameSettings.v1');
     if (!raw) return { ...GAME_SETTINGS_DEFAULTS };
     return normalizeGameSettings(JSON.parse(raw));
   } catch {
@@ -85,7 +119,6 @@ export function applyGameSettings(settings, opts = {}) {
 
   const explore = opts.exploreControls;
   if (explore) {
-    // OrbitControls: default rotateSpeed 1 ≈ our default mouseSensitivity 0.18
     explore.rotateSpeed = next.mouseSensitivity / GAME_SETTINGS_DEFAULTS.mouseSensitivity;
     explore.zoomSpeed = next.zoomSensitivity / GAME_SETTINGS_DEFAULTS.zoomSensitivity;
   }

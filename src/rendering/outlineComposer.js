@@ -238,9 +238,15 @@ export function createOutlineComposer(renderer, scene, camera) {
   function setPpEnabled(enabled) {
     pp.enabled = enabled;
     outlinePass.enabled = enabled;
+    gtaoPass.enabled = enabled;
   }
 
   function render() {
+    if (!pp.enabled && !gtaoPass.enabled) {
+      // Caller should prefer renderer.render when PP is off; keep as safe fallback.
+      composer.render();
+      return;
+    }
     if (pp.enabled) renderNormals();
     composer.render();
   }

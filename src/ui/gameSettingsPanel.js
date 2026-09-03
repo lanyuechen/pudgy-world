@@ -177,6 +177,68 @@ export function createGameSettingsPanel(containerEl, opts = {}) {
     commit({ invertLookX: invertXToggle.checked });
   });
 
+  const graphicsTitle = document.createElement('p');
+  graphicsTitle.className = 'settings-section-title';
+  graphicsTitle.textContent = '画面';
+  containerEl.appendChild(graphicsTitle);
+
+  const ppToggle = document.createElement('input');
+  ppToggle.type = 'checkbox';
+  ppToggle.className = 'settings-checkbox';
+  ppToggle.setAttribute('aria-label', '后处理描边');
+  addRow('后处理描边', '描边 + SSAO（较耗性能）', ppToggle);
+  ppToggle.addEventListener('change', () => {
+    commit({ postProcessOutline: ppToggle.checked });
+  });
+
+  const shadowsToggle = document.createElement('input');
+  shadowsToggle.type = 'checkbox';
+  shadowsToggle.className = 'settings-checkbox';
+  shadowsToggle.setAttribute('aria-label', '阴影');
+  addRow('阴影', '太阳实时阴影', shadowsToggle);
+  shadowsToggle.addEventListener('change', () => {
+    commit({ shadows: shadowsToggle.checked });
+  });
+
+  const aaToggle = document.createElement('input');
+  aaToggle.type = 'checkbox';
+  aaToggle.className = 'settings-checkbox';
+  aaToggle.setAttribute('aria-label', '抗锯齿');
+  addRow('抗锯齿', '切换后刷新页面生效', aaToggle);
+  aaToggle.addEventListener('change', () => {
+    const nextAa = aaToggle.checked;
+    commit({ antialias: nextAa });
+    // MSAA is fixed at WebGL context creation — reload to apply.
+    window.location.reload();
+  });
+
+  const cullToggle = document.createElement('input');
+  cullToggle.type = 'checkbox';
+  cullToggle.className = 'settings-checkbox';
+  cullToggle.setAttribute('aria-label', '距离裁剪');
+  addRow('距离裁剪', '缩短相机远裁剪面，远处不绘制', cullToggle);
+  cullToggle.addEventListener('change', () => {
+    commit({ distanceCullEnabled: cullToggle.checked });
+  });
+
+  const cullValue = document.createElement('span');
+  cullValue.className = 'settings-value';
+  const cullSlider = document.createElement('input');
+  cullSlider.type = 'range';
+  cullSlider.min = '20';
+  cullSlider.max = '400';
+  cullSlider.step = '5';
+  cullSlider.className = 'settings-slider';
+  cullSlider.setAttribute('aria-label', '裁剪距离');
+  const cullControl = document.createElement('div');
+  cullControl.className = 'settings-slider-wrap';
+  cullControl.appendChild(cullSlider);
+  cullControl.appendChild(cullValue);
+  const cullDistanceRow = addRow('裁剪距离', '单位：米（开启距离裁剪后生效）', cullControl);
+  cullSlider.addEventListener('input', () => {
+    commit({ distanceCullDistance: Number(cullSlider.value) });
+  });
+
   const actions = document.createElement('div');
   actions.className = 'settings-actions';
   const resetBtn = document.createElement('button');
@@ -184,7 +246,11 @@ export function createGameSettingsPanel(containerEl, opts = {}) {
   resetBtn.className = 'settings-reset';
   resetBtn.textContent = '恢复默认';
   resetBtn.addEventListener('click', () => {
+    const prevAa = state.antialias;
     commit({ ...GAME_SETTINGS_DEFAULTS });
+    if (prevAa !== GAME_SETTINGS_DEFAULTS.antialias) {
+      window.location.reload();
+    }
   });
   actions.appendChild(resetBtn);
   containerEl.appendChild(actions);
@@ -207,6 +273,14 @@ export function createGameSettingsPanel(containerEl, opts = {}) {
     invertXToggle.checked = state.invertLookX;
     zoomSlider.value = String(state.zoomSensitivity);
     zoomValue.textContent = formatZoom(state.zoomSensitivity);
+    ppToggle.checked = state.postProcessOutline;
+    shadowsToggle.checked = state.shadows;
+    aaToggle.checked = state.antialias;
+    cullToggle.checked = state.distanceCullEnabled;
+    cullSlider.value = String(state.distanceCullDistance);
+    cullValue.textContent = `${Math.round(state.distanceCullDistance)}m`;
+    cullSlider.disabled = !state.distanceCullEnabled;
+    cullDistanceRow.row.classList.toggle('is-disabled', !state.distanceCullEnabled);
   }
 
   // Apply stored prefs on create.

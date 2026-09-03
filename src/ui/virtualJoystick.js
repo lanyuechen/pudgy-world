@@ -22,30 +22,51 @@ export function createVirtualJoystick(opts = {}) {
   const base = root.querySelector('.vj-base');
   const knob = root.querySelector('.vj-knob');
   if (!base || !knob) {
-    return { setVisible() {}, dispose() {}, get active() { return false; } };
+    return { setVisible() {}, refresh() {}, dispose() {}, get active() { return false; } };
   }
 
-  const maxRadius = () => {
+  let cachedRadius = 48;
+  const readRadius = () => {
     const cssR = parseFloat(getComputedStyle(root).getPropertyValue('--vj-radius'));
-    return Number.isFinite(cssR) && cssR > 0 ? cssR : 48;
+    cachedRadius = Number.isFinite(cssR) && cssR > 0 ? cssR : 48;
+    return cachedRadius;
   };
+  readRadius();
 
   /** @type {number | null} */
   let activePointerId = null;
   let enabled = true;
+  let shown = !root.hidden;
+  let lastKnobX = NaN;
+  let lastKnobY = NaN;
+  let lastEmitX = NaN;
+  let lastEmitY = NaN;
+  let isActiveClass = false;
 
   function emit(x, y) {
+    if (x === lastEmitX && y === lastEmitY) return;
+    lastEmitX = x;
+    lastEmitY = y;
     opts.onMove?.(x, y);
   }
 
   function setKnob(dx, dy) {
+    if (Math.abs(dx - lastKnobX) < 0.35 && Math.abs(dy - lastKnobY) < 0.35) return;
+    lastKnobX = dx;
+    lastKnobY = dy;
     knob.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+  }
+
+  function setActiveClass(on) {
+    if (on === isActiveClass) return;
+    isActiveClass = on;
+    root.classList.toggle('is-active', on);
   }
 
   function reset() {
     activePointerId = null;
     setKnob(0, 0);
-    root.classList.remove('is-active');
+    setActiveClass(false);
     emit(0, 0);
   }
 
@@ -57,13 +78,12 @@ export function createVirtualJoystick(opts = {}) {
     const local = mapClientToLocal(base, clientX, clientY);
     const dx = local.x - local.width * 0.5;
     const dy = local.y - local.height * 0.5;
-    const r = maxRadius();
+    const r = cachedRadius;
     const len = Math.hypot(dx, dy);
     const scale = len > r && len > 1e-6 ? r / len : 1;
     const kx = dx * scale;
     const ky = dy * scale;
     setKnob(kx, ky);
-    // Local up (−y) → move forward (y+)
     emit(kx / r, -ky / r);
   }
 
@@ -73,7 +93,8 @@ export function createVirtualJoystick(opts = {}) {
     e.preventDefault();
     e.stopPropagation();
     activePointerId = e.pointerId;
-    root.classList.add('is-active');
+    readRadius();
+    setActiveClass(true);
     root.setPointerCapture?.(e.pointerId);
     updateFromClient(e.clientX, e.clientY);
   }
@@ -104,8 +125,12 @@ export function createVirtualJoystick(opts = {}) {
   root.addEventListener('contextmenu', (e) => e.preventDefault());
 
   function syncVisibility() {
-    // Always show for now (desktop testing); gate with isTouchUi() later if needed.
     const show = enabled;
+    if (show === shown) {
+      if (!show) return;
+      return;
+    }
+    shown = show;
     root.hidden = !show;
     if (!show) reset();
   }
@@ -118,6 +143,7 @@ export function createVirtualJoystick(opts = {}) {
       syncVisibility();
     },
     refresh() {
+      readRadius();
       syncVisibility();
     },
     dispose() {

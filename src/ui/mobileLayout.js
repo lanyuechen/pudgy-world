@@ -1,6 +1,9 @@
 /**
- * Mobile helpers: touch UI detection + forced landscape (CSS rotate) sizing/coords.
+ * Mobile helpers: touch UI detection + landscape (native lock preferred, CSS fallback).
  */
+
+/** True after a successful screen.orientation.lock('landscape'). */
+let nativeLandscapeLocked = false;
 
 export function isTouchUi() {
   if (typeof window === 'undefined') return false;
@@ -15,13 +18,19 @@ export function isMobilePortraitForced() {
   return document.documentElement.classList.contains('is-mobile-portrait');
 }
 
+export function hasNativeLandscapeLock() {
+  return nativeLandscapeLocked;
+}
+
 /** Keep html classes in sync with device / orientation. */
 export function syncMobileLayoutClasses() {
   const touch = isTouchUi();
   const portrait = window.matchMedia('(orientation: portrait)').matches;
   document.documentElement.classList.toggle('is-touch-ui', touch);
-  document.documentElement.classList.toggle('is-mobile-portrait', touch && portrait);
-  return { touch, portrait: touch && portrait };
+  // Prefer native lock — CSS rotate only when still portrait and lock unavailable/failed.
+  const useCssRotate = touch && portrait && !nativeLandscapeLocked;
+  document.documentElement.classList.toggle('is-mobile-portrait', useCssRotate);
+  return { touch, portrait: touch && portrait, useCssRotate };
 }
 
 /**
@@ -33,17 +42,26 @@ export async function tryLockLandscape() {
     const orient = screen.orientation;
     if (!orient?.lock) return false;
     await orient.lock('landscape');
+    nativeLandscapeLocked = true;
     return true;
   } catch {
+    nativeLandscapeLocked = false;
     return false;
   }
 }
 
 /**
- * Canvas/CSS pixel size for rendering (works with forced-landscape rotate).
+ * Canvas drawing-buffer size (CSS display stays 100% via stylesheet).
+ * Portrait + forced CSS-rotate uses swapped viewport so aspect matches the rotated view.
  * @param {HTMLCanvasElement | null} [canvas]
  */
 export function getRenderSize(canvas) {
+  if (isMobilePortraitForced()) {
+    return {
+      width: Math.max(1, Math.round(window.innerHeight)),
+      height: Math.max(1, Math.round(window.innerWidth)),
+    };
+  }
   const el = canvas || document.getElementById('c');
   const width = Math.max(1, Math.round(el?.clientWidth || window.innerWidth));
   const height = Math.max(1, Math.round(el?.clientHeight || window.innerHeight));
@@ -70,9 +88,6 @@ export function mapClientToLocal(el, clientX, clientY) {
     };
   }
 
-  // #app is centered and rotated 90deg CW while sized 100vh × 100vw.
-  // Forward (local from center): (lx, ly) → screen (−ly, lx)
-  // Inverse: (sx, sy) → (sy, −sx)
   const app = document.getElementById('app');
   const aw = app?.clientWidth || window.innerHeight;
   const ah = app?.clientHeight || window.innerWidth;
@@ -108,15 +123,25 @@ export function mapClientToLocal(el, clientX, clientY) {
 }
 
 /**
- * Install orientation listeners + optional first-gesture landscape lock.
+ * Install orientation listeners + prefer native landscape lock on first gesture.
  */
 export function installMobileLandscape() {
-  syncMobileLayoutClasses();
+  const bumpResize = () => {
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+  };
 
   const onChange = () => {
+    // If the OS is already landscape, drop CSS-rotate path.
+    if (!window.matchMedia('(orientation: portrait)').matches) {
+      // Keep nativeLandscapeLocked if we locked earlier; still clear CSS class via sync.
+    }
     syncMobileLayoutClasses();
-    window.dispatchEvent(new Event('resize'));
+    bumpResize();
   };
+
+  syncMobileLayoutClasses();
 
   window.addEventListener('orientationchange', onChange);
   window.matchMedia('(orientation: portrait)').addEventListener?.('change', onChange);
@@ -124,7 +149,14 @@ export function installMobileLandscape() {
 
   const tryLockOnce = () => {
     if (!isTouchUi()) return;
-    void tryLockLandscape().then(() => syncMobileLayoutClasses());
+    void tryLockLandscape().then((ok) => {
+      syncMobileLayoutClasses();
+      bumpResize();
+      if (ok) {
+        // Locked — no CSS rotate needed while the lock holds.
+        document.documentElement.classList.remove('is-mobile-portrait');
+      }
+    });
   };
   window.addEventListener('pointerdown', tryLockOnce, { once: true, passive: true });
   window.addEventListener('touchstart', tryLockOnce, { once: true, passive: true });

@@ -30,6 +30,12 @@ export function createPlayerHpBar(mountEl) {
   mountEl.append(track, text);
 
   let visible = true;
+  let lastHp = -1;
+  let lastMax = -1;
+  let lastPct = -1;
+  let lastLow = null;
+  let lastCrit = null;
+  let lastText = '';
 
   /**
    * @param {number} hp
@@ -38,14 +44,38 @@ export function createPlayerHpBar(mountEl) {
   function set(hp, maxHp) {
     const max = Math.max(1, maxHp);
     const cur = Math.max(0, Math.min(max, hp));
-    const ratio = cur / max;
-    fill.style.width = `${(ratio * 100).toFixed(1)}%`;
-    fill.classList.toggle('is-low', ratio <= 0.34);
-    fill.classList.toggle('is-critical', ratio <= 0.15);
-    text.textContent = `${Math.round(cur)}/${Math.round(max)}`;
-    mountEl.setAttribute('aria-valuenow', String(Math.round(cur)));
-    mountEl.setAttribute('aria-valuemax', String(Math.round(max)));
-    mountEl.setAttribute('aria-valuetext', `${Math.round(cur)} / ${Math.round(max)}`);
+    const roundedHp = Math.round(cur);
+    const roundedMax = Math.round(max);
+    const pct = Math.round((cur / max) * 1000) / 10; // 0.1%
+    const low = cur / max <= 0.34;
+    const crit = cur / max <= 0.15;
+    const label = `${roundedHp}/${roundedMax}`;
+
+    if (
+      roundedHp === lastHp &&
+      roundedMax === lastMax &&
+      pct === lastPct &&
+      low === lastLow &&
+      crit === lastCrit &&
+      label === lastText
+    ) {
+      return;
+    }
+
+    lastHp = roundedHp;
+    lastMax = roundedMax;
+    lastPct = pct;
+    lastLow = low;
+    lastCrit = crit;
+    lastText = label;
+
+    fill.style.width = `${pct}%`;
+    fill.classList.toggle('is-low', low);
+    fill.classList.toggle('is-critical', crit);
+    text.textContent = label;
+    mountEl.setAttribute('aria-valuenow', String(roundedHp));
+    mountEl.setAttribute('aria-valuemax', String(roundedMax));
+    mountEl.setAttribute('aria-valuetext', `${roundedHp} / ${roundedMax}`);
   }
 
   set(100, 100);
@@ -53,7 +83,9 @@ export function createPlayerHpBar(mountEl) {
   return {
     set,
     setVisible(next) {
-      visible = Boolean(next);
+      const show = Boolean(next);
+      if (show === visible) return;
+      visible = show;
       mountEl.hidden = !visible;
     },
     dispose() {

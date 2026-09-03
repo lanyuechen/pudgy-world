@@ -26,8 +26,11 @@ html.is-mobile-portrait body {
 
 html.is-mobile-portrait #app {
   position: fixed;
+  /* Landscape box: after rotate(90deg), fills the portrait viewport without stretch. */
   width: 100vh;
   height: 100vw;
+  width: 100dvh;
+  height: 100dvw;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) rotate(90deg);
@@ -947,6 +950,21 @@ html.is-mobile-portrait #app {
   flex-direction: column;
   gap: 14px;
   padding: 2px 2px 8px;
+}
+
+.settings-section-title {
+  margin: 8px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(232, 251, 255, 0.7);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.settings-row.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .settings-row {

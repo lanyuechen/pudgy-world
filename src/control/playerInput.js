@@ -104,6 +104,7 @@ export function createControlInput(domElement) {
     const rawX = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0;
     const rawY = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0;
     const q = quantizeStickToCardinal(rawX, rawY);
+    if (q.x === stickX && q.y === stickY) return;
     stickX = q.x;
     stickY = q.y;
     refreshMove();
