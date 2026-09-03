@@ -1,9 +1,65 @@
 import { defineConfig, loadEnv } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'node:fs';
 import path from 'node:path';
 
 // GitHub Pages project site: https://<user>.github.io/pudgy-world/
 const repoBase = '/pudgy-world/';
+
+/** @param {string | undefined} assetBase */
+function buildAssetRuntimeCaching(assetBase) {
+  /** @type {import('workbox-build').RuntimeCaching[]} */
+  const rules = [
+    {
+      // Same-origin game assets (models, textures, fx, wasm, etc.)
+      urlPattern: ({ url }) =>
+        /\/assets\/.+\.(glb|gltf|bin|png|jpe?g|webp|ktx2?|json|wasm|fbx|mp3|ogg|wav)$/i.test(
+          url.pathname,
+        ),
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'pudgy-game-assets',
+        expiration: {
+          maxEntries: 250,
+          maxAgeSeconds: 60 * 60 * 24 * 30,
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+  ];
+
+  const cdn = assetBase?.trim();
+  if (cdn) {
+    let cdnOrigin = '';
+    try {
+      cdnOrigin = new URL(cdn).origin;
+    } catch {
+      cdnOrigin = '';
+    }
+    if (cdnOrigin) {
+      rules.push({
+        urlPattern: ({ url }) =>
+          url.origin === cdnOrigin &&
+          /\.(glb|gltf|bin|png|jpe?g|webp|ktx2?|json|wasm|fbx|mp3|ogg|wav)$/i.test(url.pathname),
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'pudgy-cdn-assets',
+          expiration: {
+            maxEntries: 250,
+            maxAgeSeconds: 60 * 60 * 24 * 30,
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
+        },
+      });
+    }
+  }
+
+  return rules;
+}
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -27,6 +83,26 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: true,
     },
     plugins: [
+      VitePWA({
+        registerType: 'autoUpdate',
+        injectRegister: false,
+        includeAssets: [],
+        manifest: false,
+        workbox: {
+          // App shell only — do not precache multi‑MB models from public/.
+          globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+          // three + rapier chunks can exceed the 2 MiB default.
+          maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+          navigateFallback: null,
+          runtimeCaching: buildAssetRuntimeCaching(env.VITE_ASSET_BASE),
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
+        },
+        devOptions: {
+          enabled: false,
+        },
+      }),
       {
         name: 'production-asset-bundle',
         apply: 'build',

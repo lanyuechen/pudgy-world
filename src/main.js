@@ -31,7 +31,9 @@ import {
   resetSlideRoots,
 } from './ui/sceneTransition.js';
 import { getRenderSize, installMobileLandscape } from './ui/mobileLayout.js';
+import { registerServiceWorker } from './registerServiceWorker.js';
 
+registerServiceWorker();
 installMobileLandscape();
 
 const { flat: sceneOptions, scenes, otherGroups } = getSceneOptions();
