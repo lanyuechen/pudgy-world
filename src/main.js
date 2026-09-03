@@ -30,13 +30,12 @@ import {
   resetSlideRoots,
 } from './ui/sceneTransition.js';
 
-const { flat: sceneOptions, individuals, otherGroups } = getSceneOptions();
+const { flat: sceneOptions, scenes, otherGroups } = getSceneOptions();
 const optionById = new Map(sceneOptions.map((o) => [o.id, o]));
 const { groups: animGroups, byId: animById } = getAnimOptions();
 const { sections: effectSections, byId: effectById } = getEffectOptions();
 
 const SHOWCASE_GROUP_LABELS = {
-  neighborhoods: 'World Map',
   npcs: 'NPCs',
   levels: 'Levels',
   extras: 'Extras',
@@ -82,7 +81,7 @@ const scenePanel = createConfigSectionPanel(scenePanelEl, {
     id: 'scenes',
     label: '选择场景',
     openByDefault: true,
-    options: individuals.map((opt) => ({ value: opt.id, label: opt.label })),
+    options: scenes.map((opt) => ({ value: opt.id, label: opt.label })),
   }],
   onSelect: (_sectionId, sceneId) => {
     loadScene(sceneId).catch(() => {});
@@ -108,14 +107,22 @@ const showcasePanel = createConfigSectionPanel(showcasePanelEl, {
     openByDefault: index === 0,
     options: group.options.map((opt) => ({ value: opt.id, label: opt.label })),
   })),
-  onSelect: (_sectionId, optionId) => {
+  onSelect: (sectionId, optionId) => {
     const option = optionById.get(optionId);
     if (!option) return;
     showcaseSelectedId = optionId;
+    showcasePanel.syncSelection((id) => (id === sectionId ? optionId : ''));
     resizePreviewViewport();
     showcasePreview?.previewOption(option);
   },
 });
+
+const defaultShowcaseOption = otherGroups[0]?.options?.[0] ?? null;
+if (defaultShowcaseOption) {
+  showcasePanel.syncSelection((sectionId) =>
+    sectionId === (otherGroups[0]?.id ?? 'npcs') ? defaultShowcaseOption.id : '',
+  );
+}
 
 const animPanel = createConfigSectionPanel(animPanelEl, {
   accordion: true,
@@ -170,7 +177,7 @@ syncScenePickers(DEFAULT_SCENE_ID);
 let configTab = 'scene';
 let configOpen = false;
 /** @type {string|null} */
-let showcaseSelectedId = null;
+let showcaseSelectedId = defaultShowcaseOption?.id ?? null;
 /** @type {string|null} */
 let animSelectedId = null;
 /** @type {string|null} */
@@ -316,13 +323,20 @@ function applyConfigTab(tab, { force = false } = {}) {
 
   if (tab === 'showcase') {
     applyShowcaseMode();
-    showcasePanel.updateLayout();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        showcasePanel.updateLayout();
         resizePreviewViewport();
-        if (showcaseSelectedId) {
-          const option = optionById.get(showcaseSelectedId);
-          if (option) showcasePreview?.previewOption(option);
+        const option =
+          (showcaseSelectedId && optionById.get(showcaseSelectedId)) ||
+          otherGroups[0]?.options?.[0] ||
+          null;
+        if (option) {
+          showcaseSelectedId = option.id;
+          showcasePanel.syncSelection((sectionId) =>
+            sectionId === option.group ? option.id : '',
+          );
+          showcasePreview?.previewOption(option);
         }
       });
     });
@@ -331,10 +345,10 @@ function applyConfigTab(tab, { force = false } = {}) {
 
   if (tab === 'anim') {
     applyShowcaseMode();
-    animPanel.updateLayout();
     // Two frames: panel → 100vw, then flex viewport gets non-zero size.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        animPanel.updateLayout();
         resizePreviewViewport();
         const option =
           (animSelectedId && animById.get(animSelectedId)) ||
@@ -356,9 +370,9 @@ function applyConfigTab(tab, { force = false } = {}) {
 
   if (tab === 'effects') {
     applyShowcaseMode('effects');
-    effectsPanel.updateLayout();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        effectsPanel.updateLayout();
         resizePreviewViewport();
         const option =
           (effectsSelectedId && effectById.get(effectsSelectedId)) ||

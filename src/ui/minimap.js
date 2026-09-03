@@ -11,7 +11,7 @@ const MAP_ICON =
 
 /**
  * Circular minimap — baked map window centered on player.
- * Collapsed by default; toggle via the right-side map button.
+ * Expanded by default; toggle via the right-side map button.
  */
 export function createMinimap({
   mapRoot = null,
@@ -24,7 +24,7 @@ export function createMinimap({
     el = document.createElement('div');
     el.id = 'combat-minimap';
     el.innerHTML =
-      `<button type="button" class="minimap-toggle" aria-label="展开小地图" aria-expanded="false">${MAP_ICON}</button>` +
+      `<button type="button" class="minimap-toggle" aria-label="折叠小地图" aria-expanded="true">${MAP_ICON}</button>` +
       '<div class="minimap-panel"><canvas class="minimap-canvas"></canvas></div>';
     document.getElementById('app')?.appendChild(el);
   }
@@ -38,11 +38,11 @@ export function createMinimap({
   canvas.style.width = `${size}px`;
   canvas.style.height = `${size}px`;
 
-  let expanded = false;
+  let expanded = true;
   let animating = false;
   let animTimer = 0;
-  el.classList.add('is-collapsed');
-  el.classList.remove('is-expanded');
+  el.classList.add('is-expanded');
+  el.classList.remove('is-collapsed');
 
   const half = () => canvas.width * 0.5;
   const viewRadius = range;
@@ -91,7 +91,8 @@ export function createMinimap({
 
   function setVisible(visible) {
     el.hidden = !visible;
-    if (!visible) setExpanded(false);
+    // Hide collapses; show again opens by default when combat starts.
+    setExpanded(Boolean(visible));
   }
 
   function worldToMapPixel(x, z, out = { x: 0, y: 0 }) {

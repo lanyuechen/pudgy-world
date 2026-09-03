@@ -101,6 +101,31 @@ function pickWanderPoint(homeX, homeZ, radius, out) {
   return out;
 }
 
+function assignPatrolTarget(brain) {
+  const c = brain.controller;
+  const pick = brain.world?.pickPatrolPoint;
+  if (typeof pick === 'function') {
+    const pt = pick();
+    if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.z)) {
+      brain.wanderTarget.set(pt.x, 0, pt.z);
+      // Drift home with the agent so rescue / local fallback stay nearby.
+      c.homeX = c.root.position.x;
+      c.homeZ = c.root.position.z;
+      brain.retargetAt = (COMBAT.enemyPatrolRetargetSec ?? 7) * (0.7 + Math.random() * 0.6);
+      brain.stuckTimer = 0;
+      return;
+    }
+  }
+  pickWanderPoint(
+    c.homeX,
+    c.homeZ,
+    c.wanderRadius ?? COMBAT.enemyWanderRadius ?? 48,
+    brain.wanderTarget,
+  );
+  brain.retargetAt = (COMBAT.enemyPatrolRetargetSec ?? 7) * (0.7 + Math.random() * 0.6);
+  brain.stuckTimer = 0;
+}
+
 function setEngageRingTarget(ex, ez, playerX, playerZ, preferred, out) {
   const dx = ex - playerX;
   const dz = ez - playerZ;
@@ -255,6 +280,13 @@ function applyObstacleAvoidance(vehicle, colliders) {
 
   const leftClear = leftHits.length ? leftHits[0].distance : look;
   const rightClear = rightHits.length ? rightHits[0].distance : look;
+
+  // Both sides blocked → reverse instead of freezing into the wall.
+  if (leftClear < look * 0.25 && rightClear < look * 0.25) {
+    vehicle.velocity.set(-fx * speed, 0, -fz * speed);
+    return;
+  }
+
   const useLeft = leftClear >= rightClear;
   const sx = useLeft ? -fz : fz;
   const sz = useLeft ? fx : -fx;
@@ -270,28 +302,33 @@ class WanderState extends State {
   enter(owner) {
     const b = owner.userData.brain;
     owner.steering.clear();
-    b.wander.weight = 0.45;
-    b.arriveWander.weight = 0.85;
+    // Prefer Arrive toward distant map waypoints; light Wander for local jitter.
+    b.wander.weight = 0.28;
+    b.arriveWander.weight = 1.15;
     owner.steering.add(b.wander);
     owner.steering.add(b.arriveWander);
     owner.maxSpeed = COMBAT.enemyWalkSpeed ?? 2.4;
-    pickWanderPoint(
-      b.controller.homeX,
-      b.controller.homeZ,
-      b.controller.wanderRadius,
-      b.wanderTarget,
-    );
+    b.lastPosX = owner.position.x;
+    b.lastPosZ = owner.position.z;
+    assignPatrolTarget(b);
   }
 
   execute(owner) {
     const b = owner.userData.brain;
-    if (owner.position.distanceTo(b.wanderTarget) < 0.75) {
-      pickWanderPoint(
-        b.controller.homeX,
-        b.controller.homeZ,
-        b.controller.wanderRadius,
-        b.wanderTarget,
-      );
+    const dt = b.world._ctx.dt || 0;
+
+    const moved = Math.hypot(owner.position.x - b.lastPosX, owner.position.z - b.lastPosZ);
+    b.lastPosX = owner.position.x;
+    b.lastPosZ = owner.position.z;
+    if (moved < 0.12) b.stuckTimer += dt;
+    else b.stuckTimer = Math.max(0, b.stuckTimer - dt * 1.5);
+
+    b.retargetAt = Math.max(0, (b.retargetAt ?? 0) - dt);
+
+    const nearTarget = owner.position.distanceTo(b.wanderTarget) < 1.1;
+    const stuck = b.stuckTimer >= (COMBAT.enemyStuckSec ?? 1.15);
+    if (nearTarget || stuck || b.retargetAt <= 0) {
+      assignPatrolTarget(b);
     }
   }
 }
@@ -452,6 +489,8 @@ export function createEnemyAiWorld() {
   const brains = new Map();
   /** @type {THREE.Object3D[]} */
   let colliders = [];
+  /** @type {null | (() => { x: number, z: number })} */
+  let pickPatrolPoint = null;
 
   const playerEntity = new MovingEntity();
   playerEntity.name = 'player';
@@ -539,8 +578,8 @@ export function createEnemyAiWorld() {
     const searchTarget = new Vector3();
     const threatTarget = new Vector3();
 
-    const wander = new WanderBehavior(1.6, 4, 2.5);
-    const arriveWander = new ArriveBehavior(wanderTarget, 2, 0.45);
+    const wander = new WanderBehavior(2.2, 8, 4);
+    const arriveWander = new ArriveBehavior(wanderTarget, 3.5, 0.7);
     const arriveEngage = new ArriveBehavior(engageTarget, 2.2, 0.8);
     const arriveSearch = new ArriveBehavior(searchTarget, 2.4, 0.9);
     const fleePlayer = new FleeBehavior(
@@ -580,6 +619,10 @@ export function createEnemyAiWorld() {
       memory,
       dodgeTimeLeft: 0,
       fleeTimeLeft: 0,
+      stuckTimer: 0,
+      retargetAt: 0,
+      lastPosX: controller.root.position.x,
+      lastPosZ: controller.root.position.z,
       canSeePlayer: false,
       lastKnownValid: false,
       lastKnownX: 0,
@@ -588,7 +631,12 @@ export function createEnemyAiWorld() {
       world: null,
     };
     vehicle.userData = { brain };
-    brain.world = { _ctx, entityManager };
+    brain.world = { _ctx, entityManager, pickPatrolPoint };
+
+    // Sync start pose before first WANDER enter (patrol home / targets).
+    vehicle.position.set(controller.root.position.x, 0, controller.root.position.z);
+    brain.lastPosX = vehicle.position.x;
+    brain.lastPosZ = vehicle.position.z;
 
     entityManager.add(vehicle);
     brains.set(controller.id, brain);
@@ -804,6 +852,13 @@ export function createEnemyAiWorld() {
     colliders = Array.isArray(next) ? next : [];
   }
 
+  function setPickPatrolPoint(fn) {
+    pickPatrolPoint = typeof fn === 'function' ? fn : null;
+    for (const brain of brains.values()) {
+      if (brain.world) brain.world.pickPatrolPoint = pickPatrolPoint;
+    }
+  }
+
   function dispose() {
     for (const id of [...brains.keys()]) {
       const brain = brains.get(id);
@@ -813,5 +868,13 @@ export function createEnemyAiWorld() {
     entityManager.remove(playerEntity);
   }
 
-  return { attach, detach, computeMove, setContext, setColliders, dispose };
+  return {
+    attach,
+    detach,
+    computeMove,
+    setContext,
+    setColliders,
+    setPickPatrolPoint,
+    dispose,
+  };
 }

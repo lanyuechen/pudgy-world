@@ -6,7 +6,12 @@ import { THE_BERG_MAPS, THE_BERG_MAP_V02 } from './theBergAssets.js';
 const WORLD_MAP_ID = THE_BERG_MAP_V02.id;
 /** Prefer newest Pengu Plaza when present. */
 const PLAZA_ID = 'Individual_PenguPlaza_03';
-const DEFAULT_ID = WORLD_MAP_ID;
+/** Default playable scene — 跑酷大厅. */
+const OBBY_LOBBY_ID = 'Individual_ObbyLobby_01';
+const DEFAULT_ID = OBBY_LOBBY_ID;
+
+/** World maps also listed in the main 场景 picker (not only 橱窗). */
+const SCENE_PICKER_WORLD_MAP_IDS = new Set([THE_BERG_MAP_V02.id]);
 
 /**
  * Product town names that map to scene assets — label as 中文名(英文名).
@@ -99,6 +104,8 @@ export function getSceneOptions() {
   const individuals = placements
     .filter((p) => isIndividualTown(p.name))
     .sort((a, b) => {
+      if (a.name === OBBY_LOBBY_ID) return -1;
+      if (b.name === OBBY_LOBBY_ID) return 1;
       if (a.name === PLAZA_ID) return -1;
       if (b.name === PLAZA_ID) return 1;
       return individualLabel(a.name).localeCompare(individualLabel(b.name), 'zh');
@@ -170,6 +177,9 @@ export function getSceneOptions() {
     group: 'neighborhoods',
   }));
 
+  /** Featured world maps appear in the main 场景 list (before town islands). */
+  const featuredWorldMaps = worldMaps.filter((o) => SCENE_PICKER_WORLD_MAP_IDS.has(o.id));
+
   const groups = [
     {
       id: 'neighborhoods',
@@ -203,8 +213,13 @@ export function getSceneOptions() {
     flat: groups.flatMap((g) => g.options),
     /** Playable town islands — used by the 场景 card grid. */
     individuals,
-    /** Everything except individuals — used by the 其他 dropdown. */
-    otherGroups: groups.filter((g) => g.id !== 'individuals'),
+    /**
+     * Main 场景 picker: World Map 2 (The Berg) + individual town islands.
+     * World Map remains explore-only; islands stay playable.
+     */
+    scenes: [...featuredWorldMaps, ...individuals],
+    /** 橱窗列表：不含场景页的岛屿与 World Map。 */
+    otherGroups: groups.filter((g) => g.id !== 'individuals' && g.id !== 'neighborhoods'),
   };
 }
 

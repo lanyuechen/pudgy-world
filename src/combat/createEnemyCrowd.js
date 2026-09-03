@@ -153,15 +153,32 @@ export async function createEnemyCrowd({
   if (collisionRoot) box.setFromObject(collisionRoot);
   const center = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
   const groundFallback = box.isEmpty() ? 0 : box.min.y;
-  /** Island walkable deck height — player spawn is the reliable reference. */
-  const deckY = PLAYER.spawn?.y ?? center.y;
   /** High origin for downward ground rays (above island AABB). */
   const skyRayY = box.isEmpty() ? 250 : Math.max(250, box.max.y + 40);
+  /** Deck height from a center ground sample — more reliable than spawn drop-in Y. */
+  const deckY =
+    findGroundY(colliders, center.x, center.z, PLAYER.spawn?.y ?? center.y, skyRayY) ??
+    PLAYER.spawn?.y ??
+    center.y;
   /** Updated each frame from the live player so enemies spawn on the same floor. */
   let refGroundY = deckY;
-  const islandRadius = box.isEmpty()
-    ? 8
-    : Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).z) * 0.35;
+  const mapSize = box.isEmpty() ? new THREE.Vector3(16, 0, 16) : box.getSize(new THREE.Vector3());
+  /** Inset from AABB edges so spawns stay in the map interior, not on cliffs/water rim. */
+  const spawnMarginX = Math.max(mapSize.x * 0.12, 2);
+  const spawnMarginZ = Math.max(mapSize.z * 0.12, 2);
+  const spawnMinX = box.isEmpty() ? center.x - 6 : box.min.x + spawnMarginX;
+  const spawnMaxX = box.isEmpty() ? center.x + 6 : box.max.x - spawnMarginX;
+  const spawnMinZ = box.isEmpty() ? center.z - 6 : box.min.z + spawnMarginZ;
+  const spawnMaxZ = box.isEmpty() ? center.z + 6 : box.max.z - spawnMarginZ;
+  const spawnSpanX = Math.max(spawnMaxX - spawnMinX, 1);
+  const spawnSpanZ = Math.max(spawnMaxZ - spawnMinZ, 1);
+  /** Near-center fallback radius when inset sampling misses walkable ground. */
+  const fallbackRadius = Math.min(spawnSpanX, spawnSpanZ) * 0.35;
+  /** Map-scale patrol radius so enemies roam the island, not a tiny home circle. */
+  const mapPatrolRadius = Math.max(
+    COMBAT.enemyWanderRadius ?? 48,
+    Math.min(spawnSpanX, spawnSpanZ) * 0.42,
+  );
 
   /** @type {Array<any>} */
   const controllers = [];
@@ -229,7 +246,7 @@ export async function createEnemyCrowd({
         flashTimer: 0,
         homeX: x,
         homeZ: z,
-        wanderRadius: p.wanderRadius ?? 6,
+        wanderRadius: mapPatrolRadius,
         target: null,
         mode: 'idle',
         nextDecisionAt: 1.5 + Math.random() * 2.5,
@@ -315,6 +332,7 @@ export async function createEnemyCrowd({
     c.personality = rollEnemyPersonality();
     c.homeX = x;
     c.homeZ = z;
+    c.wanderRadius = mapPatrolRadius;
     c.root.visible = true;
     placeEnemyOnGround(c, x, z);
     aiWorld.attach(c);
@@ -666,14 +684,38 @@ export async function createEnemyCrowd({
     c.anim.update(dt);
   }
 
-  function pickRespawnPoint() {
-    const ang = Math.random() * Math.PI * 2;
-    const dist = islandRadius * (0.45 + Math.random() * 0.5);
-    return {
-      x: center.x + Math.cos(ang) * dist,
-      z: center.z + Math.sin(ang) * dist,
-    };
+  /**
+   * True when (x,z) has walkable ground near the play deck — not void / water / far roofs.
+   */
+  function isWalkableSpawn(x, z) {
+    const y = findGroundY(colliders, x, z, refGroundY, skyRayY);
+    if (y == null) return false;
+    return Math.abs(y - refGroundY) <= 6;
   }
+
+  /**
+   * Random XZ inside the map AABB (inset), validated by ground raycast.
+   * Falls back to near-center samples, then island center.
+   */
+  function pickRespawnPoint(maxAttempts = 36) {
+    for (let i = 0; i < maxAttempts; i++) {
+      const x = spawnMinX + Math.random() * spawnSpanX;
+      const z = spawnMinZ + Math.random() * spawnSpanZ;
+      if (isWalkableSpawn(x, z)) return { x, z };
+    }
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = fallbackRadius * Math.random();
+      const x = center.x + Math.cos(ang) * dist;
+      const z = center.z + Math.sin(ang) * dist;
+      if (isWalkableSpawn(x, z)) return { x, z };
+    }
+
+    return { x: center.x, z: center.z };
+  }
+
+  aiWorld.setPickPatrolPoint(pickRespawnPoint);
 
   function syncActiveEnemies() {
     const alive = controllers.filter((c) => c.alive);

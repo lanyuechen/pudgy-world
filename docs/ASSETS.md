@@ -91,11 +91,11 @@ PudgyWorldAssets/
 
 | 子目录 | 内容 | Web 移植 |
 |--------|------|----------|
-| `Neighborhoods/` | 世界地图用城镇块 `Neighborhood_*`、`Berg_Filler*`、`Locked/` | **部分**：`public/assets/models/neighborhoods/`（多为 `_02` 版本；源里有更新的 `_03`、Locked、旧版未全搬） |
+| `Neighborhoods/` | 世界地图用城镇块 `Neighborhood_*`、`Berg_Filler*` | **部分**：`public/assets/models/neighborhoods/`（仅 `_02` / World Map 2） |
 | `Individual Neighborhoods/` | 独立可玩岛屿 `Individual_*`（含节日变体） | **部分**：`public/.../individuals/`（主城镇；节日/圣诞等多数未搬） |
 | `Extras/` | 摩天轮、赛道、门、树、海鸥等 | **大部分**：`public/.../extras/` |
 | `Special Environments/` | 换装间 `DressUp_Boy/Girl/Neutral` | **未移植** |
-| `TheBerg_V_01/02/03.fbx` | The Berg 整体 | **部分**：Web 用 `TheBerg_V_02`（World Map） |
+| `TheBerg_V_01/02/03.fbx` | The Berg 整体 | **部分**：Web 仅用 `TheBerg_V_02`（World Map 2） |
 
 场景下拉对应：
 
@@ -215,7 +215,7 @@ public/assets/
 | 联机 / 完整任务系统 | Scripts + ScriptableObjects | **未做** |
 | 换装间场景 | Special Environments | **未做** |
 | Houdini 特效源 | VFX/ | **未导入**（可导出后再接） |
-| Locked 未探索城镇外观 | Neighborhoods/Locked | **未接** |
+| Locked 未探索城镇外观 | Neighborhoods/Locked | **已移除** |
 | 节日变体城镇 | Individual 圣诞/夏日等 | **大多未拷** |
 
 ---
@@ -244,7 +244,7 @@ public/assets/
 | 玩家换装 Traits | ★★★★☆ | 运行时集合齐；源树旧版未全搬 |
 | NPC 角色网格 | ★★★★★ | 角色 FBX 已进 public；岛上刷怪仍精选 |
 | NPC 动画 | ★★☆☆☆ | 仅通用 10 套 |
-| Land / 城镇 | ★★★☆☆ | 主路径有；`_03`、节日、Locked 不全 |
+| Land / 城镇 | ★★★☆☆ | World Map 2（`_02`）已接入；节日变体不全 |
 | 玩家动画全集 | ★★★☆☆ | 够玩；变体不全 |
 | Unity 逻辑/联机/任务 | ★☆☆☆☆ | JS 重写子集 |
 | VFX 源工程 | ☆☆☆☆☆ | 需导出后才能用 |
@@ -256,6 +256,6 @@ public/assets/
 
 1. **`.meta` 文件**：Unity 专用；Web / Three.js **不读取**。  
 2. **单位**：Land / Asset_List 类 FBX 源为 cm；`convert:glb` 写入米制 GLB（`pudgyUnitsBaked`），运行时不再父节点 `cm→m`。FBX 开发兜底仍走 `normalizeFbxToMeters`。  
-3. **版本**：Web 中 Neighborhood/Individual 多为 `_02`；Unity 源树常有 `_03` 更新，未全部替换。  
+3. **版本**：Web 世界地图仅保留 Neighborhood `_02` / `TheBerg_V_02`；独立岛屿仍可有 `Individual_*_03`。  
 4. **FBX 6100**：部分早期 Intro 资源曾无法被 Three.js 解析，故 Intro 采用降级方案。  
 5. 本文随仓库演进可能过期；以 `public/assets` 与 `src/config` 实际文件为准。

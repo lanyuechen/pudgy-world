@@ -382,24 +382,6 @@ body,
   overflow-y: auto;
 }
 
-/* Anim / showcase / effects: many accordion groups — scroll the pane when content exceeds the viewport */
-.config-pane[data-pane='anim'],
-.config-pane[data-pane='showcase'],
-.config-pane[data-pane='effects'] {
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(158, 231, 245, 0.45) transparent;
-}
-
-.config-pane[data-pane='anim'] .config-section-panel,
-.config-pane[data-pane='showcase'] .config-section-panel,
-.config-pane[data-pane='effects'] .config-section-panel {
-  flex: 0 0 auto;
-  overflow: visible;
-}
-
 .config-pane[hidden] {
   display: none;
 }

@@ -64,8 +64,15 @@ export const COMBAT = {
   enemyMemorySpan: 4,
   /** Forward look-ahead for obstacle avoidance (m). */
   enemyObstacleLookAhead: 2.8,
-  enemyCountMin: 5,
-  enemyCountMax: 8,
+  /** Fixed wave size. */
+  enemyCountMin: 10,
+  enemyCountMax: 10,
+  /** Default patrol radius when map size is unknown (m). */
+  enemyWanderRadius: 48,
+  /** Force a new patrol waypoint at least this often (s). */
+  enemyPatrolRetargetSec: 7,
+  /** Seconds of near-zero movement before treating as stuck. */
+  enemyStuckSec: 1.15,
   respawnDelay: 3,
 
   chargeMinHold: 0.5,
@@ -180,6 +187,24 @@ export const ENEMY_PLACEMENTS = [
     clips: ['walk1', 'idle2', 'talk'],
     position: { x: -4, y: 0, z: 0.5 },
     yawDeg: 90,
+    wanderRadius: 5.5,
+  },
+  {
+    id: 'enemy-bailey',
+    model: 'bailey',
+    skeleton: 'standard',
+    clips: ['walk2', 'idle1', 'wave'],
+    position: { x: 2, y: 0, z: -4 },
+    yawDeg: 15,
+    wanderRadius: 5.5,
+  },
+  {
+    id: 'enemy-bean',
+    model: 'bean',
+    skeleton: 'standard',
+    clips: ['walk1', 'idle3', 'talkHappy'],
+    position: { x: -2.5, y: 0, z: 4 },
+    yawDeg: 200,
     wanderRadius: 5.5,
   },
 ];

@@ -78,14 +78,8 @@ export function createConfigSectionPanel(containerEl, { sections, accordion = fa
     }
 
     const available = panelHeight - fixedHeight;
-    if (available <= 40) {
-      // Not enough room for an inner list scroller (e.g. many accordion headers).
-      // Let the parent pane scroll the whole panel instead.
-      return;
-    }
-
-    // When multiple sections are open, split remaining space; accordion usually has one.
-    const share = Math.floor(available / openEntries.length);
+    // Always keep scrolling inside the open section(s), matching the skin pane.
+    const share = Math.max(48, Math.floor(available / openEntries.length));
 
     for (const entry of openEntries) {
       const listHeight = entry.list.scrollHeight;
