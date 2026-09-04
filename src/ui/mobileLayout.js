@@ -34,14 +34,65 @@ export function syncMobileLayoutClasses() {
   return { touch, portrait: touch && portrait };
 }
 
+function isFullscreenActive() {
+  const doc = /** @type {Document & {
+    webkitFullscreenElement?: Element | null;
+    mozFullScreenElement?: Element | null;
+    msFullscreenElement?: Element | null;
+  }} */ (document);
+  return Boolean(
+    doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement,
+  );
+}
+
 /**
- * Prefer native landscape lock when the browser allows it (needs a user gesture).
+ * Enter fullscreen first so orientation.lock is more likely to be allowed.
+ * @param {Element} [el]
+ * @returns {Promise<boolean>}
+ */
+export async function tryRequestFullscreen(el = document.documentElement) {
+  if (isFullscreenActive()) return true;
+
+  const target = /** @type {Element & {
+    webkitRequestFullscreen?: () => Promise<void> | void;
+    webkitRequestFullScreen?: () => Promise<void> | void;
+    mozRequestFullScreen?: () => Promise<void> | void;
+    msRequestFullscreen?: () => Promise<void> | void;
+  }} */ (el || document.documentElement);
+
+  const request =
+    target.requestFullscreen?.bind(target) ||
+    target.webkitRequestFullscreen?.bind(target) ||
+    target.webkitRequestFullScreen?.bind(target) ||
+    target.mozRequestFullScreen?.bind(target) ||
+    target.msRequestFullscreen?.bind(target);
+
+  if (!request) return false;
+
+  try {
+    await Promise.resolve(request());
+    return isFullscreenActive();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fullscreen then native landscape lock (same user-gesture chain).
  * @returns {Promise<boolean>}
  */
 export async function tryLockLandscape() {
+  await tryRequestFullscreen(document.documentElement);
+
   try {
     const orient = screen.orientation;
-    if (!orient?.lock) return false;
+    if (!orient?.lock) {
+      nativeLandscapeLocked = false;
+      return false;
+    }
     await orient.lock('landscape');
     nativeLandscapeLocked = true;
     return true;
@@ -98,6 +149,8 @@ export function installMobileLandscape() {
   window.addEventListener('orientationchange', onChange);
   window.matchMedia('(orientation: portrait)').addEventListener?.('change', onChange);
   window.matchMedia('(pointer: coarse)').addEventListener?.('change', onChange);
+  document.addEventListener('fullscreenchange', onChange);
+  document.addEventListener('webkitfullscreenchange', onChange);
 
   const tipBtn = document.getElementById('landscape-tip-btn');
   tipBtn?.addEventListener('click', () => {
@@ -110,6 +163,8 @@ export function installMobileLandscape() {
   return {
     dispose() {
       window.removeEventListener('orientationchange', onChange);
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
     },
   };
 }
