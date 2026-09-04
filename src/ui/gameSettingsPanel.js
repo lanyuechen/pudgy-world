@@ -191,15 +191,6 @@ export function createGameSettingsPanel(containerEl, opts = {}) {
     commit({ postProcessOutline: ppToggle.checked });
   });
 
-  const shadowsToggle = document.createElement('input');
-  shadowsToggle.type = 'checkbox';
-  shadowsToggle.className = 'settings-checkbox';
-  shadowsToggle.setAttribute('aria-label', '阴影');
-  addRow('阴影', '太阳实时阴影', shadowsToggle);
-  shadowsToggle.addEventListener('change', () => {
-    commit({ shadows: shadowsToggle.checked });
-  });
-
   const aaToggle = document.createElement('input');
   aaToggle.type = 'checkbox';
   aaToggle.className = 'settings-checkbox';
@@ -274,7 +265,6 @@ export function createGameSettingsPanel(containerEl, opts = {}) {
     zoomSlider.value = String(state.zoomSensitivity);
     zoomValue.textContent = formatZoom(state.zoomSensitivity);
     ppToggle.checked = state.postProcessOutline;
-    shadowsToggle.checked = state.shadows;
     aaToggle.checked = state.antialias;
     cullToggle.checked = state.distanceCullEnabled;
     cullSlider.value = String(state.distanceCullDistance);

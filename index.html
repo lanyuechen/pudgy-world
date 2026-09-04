@@ -28,9 +28,33 @@
         </div>
       </div>
       <div id="landscape-tip" hidden aria-hidden="true" role="dialog" aria-label="横屏提示">
-        <button type="button" id="landscape-tip-btn">
-          横屏游戏，以获得更好的体验
-        </button>
+        <div class="landscape-tip-card">
+          <button
+            type="button"
+            id="landscape-tip-btn"
+            class="landscape-tip-icon-btn"
+            aria-label="点击横屏开始游戏"
+          >
+            <span class="landscape-tip-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" width="88" height="88">
+                <g class="landscape-tip-phone">
+                  <rect
+                    x="20"
+                    y="8"
+                    width="24"
+                    height="48"
+                    rx="4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  />
+                  <circle cx="32" cy="50" r="1.8" fill="currentColor" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <p id="landscape-tip-caption" class="landscape-tip-caption">点击横屏开始游戏</p>
+        </div>
       </div>
       <div id="config">
         <div class="player-status" id="player-status">

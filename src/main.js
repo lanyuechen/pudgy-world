@@ -509,8 +509,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1;
-renderer.shadowMap.enabled = initialGameSettings.shadows;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false;
 
 const explore = createExploreCamera(canvas);
 const camera = explore.camera;
@@ -529,10 +528,6 @@ let outlineComposer = null;
  */
 function applyGraphicsSettings(settings) {
   liveGameSettings = settings;
-  renderer.shadowMap.enabled = settings.shadows;
-  if (world?.lights?.sun) {
-    world.lights.sun.castShadow = settings.shadows;
-  }
   outlineComposer?.setPpEnabled(settings.postProcessOutline);
 
   const far = settings.distanceCullEnabled

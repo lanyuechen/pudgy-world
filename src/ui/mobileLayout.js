@@ -5,6 +5,15 @@
 /** True after a successful screen.orientation.lock('landscape'). */
 let nativeLandscapeLocked = false;
 
+/** Caption switched to fail copy after lock attempt fails. */
+let showManualRotateHint = false;
+
+const TIP_CAPTION_DEFAULT = '点击横屏开始游戏';
+const TIP_CAPTION_FAIL = '横屏失败，请手动旋转手机';
+
+/** PC 调试样式：强制显示横屏浮层。调完改回 false。 */
+const FORCE_LANDSCAPE_TIP_DEBUG = false;
+
 export function isTouchUi() {
   if (typeof window === 'undefined') return false;
   if (window.matchMedia('(pointer: coarse)').matches) return true;
@@ -18,6 +27,20 @@ export function hasNativeLandscapeLock() {
   return nativeLandscapeLocked;
 }
 
+/** @param {boolean} manual */
+function setLandscapeTipMode(manual) {
+  showManualRotateHint = manual;
+  const caption = document.getElementById('landscape-tip-caption');
+  const tipBtn = document.getElementById('landscape-tip-btn');
+  if (caption) {
+    caption.textContent = manual ? TIP_CAPTION_FAIL : TIP_CAPTION_DEFAULT;
+    caption.classList.toggle('is-fail', manual);
+  }
+  if (tipBtn) {
+    tipBtn.setAttribute('aria-label', manual ? TIP_CAPTION_FAIL : TIP_CAPTION_DEFAULT);
+  }
+}
+
 /** Keep html classes / landscape tip in sync with device orientation. */
 export function syncMobileLayoutClasses() {
   const touch = isTouchUi();
@@ -25,11 +48,15 @@ export function syncMobileLayoutClasses() {
   document.documentElement.classList.toggle('is-touch-ui', touch);
 
   const tip = document.getElementById('landscape-tip');
-  const showTip = touch && portrait;
+  const showTip = FORCE_LANDSCAPE_TIP_DEBUG || (touch && portrait);
+  if (!showTip) {
+    showManualRotateHint = false;
+  }
   if (tip) {
     tip.hidden = !showTip;
     tip.setAttribute('aria-hidden', showTip ? 'false' : 'true');
   }
+  setLandscapeTipMode(showTip && showManualRotateHint);
 
   return { touch, portrait: touch && portrait };
 }
@@ -82,23 +109,23 @@ export async function tryRequestFullscreen(el = document.documentElement) {
 
 /**
  * Fullscreen then native landscape lock (same user-gesture chain).
- * @returns {Promise<boolean>}
+ * @returns {Promise<{ fullscreen: boolean, locked: boolean }>}
  */
 export async function tryLockLandscape() {
-  await tryRequestFullscreen(document.documentElement);
+  const fullscreen = await tryRequestFullscreen(document.documentElement);
 
   try {
     const orient = screen.orientation;
     if (!orient?.lock) {
       nativeLandscapeLocked = false;
-      return false;
+      return { fullscreen, locked: false };
     }
     await orient.lock('landscape');
     nativeLandscapeLocked = true;
-    return true;
+    return { fullscreen, locked: true };
   } catch {
     nativeLandscapeLocked = false;
-    return false;
+    return { fullscreen: fullscreen || isFullscreenActive(), locked: false };
   }
 }
 
@@ -154,10 +181,17 @@ export function installMobileLandscape() {
 
   const tipBtn = document.getElementById('landscape-tip-btn');
   tipBtn?.addEventListener('click', () => {
-    void tryLockLandscape().then(() => {
-      syncMobileLayoutClasses();
-      bumpResize();
-    });
+    if (!(tipBtn instanceof HTMLButtonElement) || tipBtn.disabled) return;
+    tipBtn.disabled = true;
+    void tryLockLandscape()
+      .then((result) => {
+        setLandscapeTipMode(!result.locked);
+        syncMobileLayoutClasses();
+        bumpResize();
+      })
+      .finally(() => {
+        tipBtn.disabled = false;
+      });
   });
 
   return {

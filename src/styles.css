@@ -2,6 +2,8 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 html,
@@ -12,6 +14,7 @@ body,
   overflow: hidden;
   background: #1a3a48;
   font-family: 'Segoe UI', system-ui, sans-serif;
+  -webkit-touch-callout: none;
 }
 
 #landscape-tip {
@@ -20,9 +23,11 @@ body,
   z-index: 100;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: rgba(6, 22, 30, 0.82);
-  backdrop-filter: blur(10px);
+  padding: 28px 20px;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(42, 106, 122, 0.55) 0%, transparent 70%),
+    rgba(8, 24, 32, 0.78);
+  backdrop-filter: blur(12px);
   pointer-events: auto;
 }
 
@@ -30,22 +35,84 @@ body,
   display: none;
 }
 
-#landscape-tip-btn {
-  appearance: none;
-  max-width: min(320px, 88vw);
-  padding: 18px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #2a6a7a, #163844);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-  color: #e8fbff;
-  font: 600 15px/1.45 'Segoe UI', system-ui, sans-serif;
+.landscape-tip-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(300px, 86vw);
   text-align: center;
-  cursor: pointer;
+  color: #e8fbff;
 }
 
-#landscape-tip-btn:active {
-  transform: scale(0.98);
+.landscape-tip-icon-btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.landscape-tip-icon-btn:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.landscape-tip-icon-btn:active .landscape-tip-icon {
+  transform: scale(0.96);
+}
+
+.landscape-tip-icon {
+  display: grid;
+  place-items: center;
+  width: 128px;
+  height: 128px;
+  color: #9ee7f5;
+  transition: transform 0.12s ease;
+}
+
+.landscape-tip-phone {
+  transform-origin: 32px 32px;
+  animation: landscape-tip-rotate 2.4s ease-in-out infinite;
+}
+
+@keyframes landscape-tip-rotate {
+  0%,
+  18% {
+    transform: rotate(0deg);
+  }
+  38%,
+  62% {
+    transform: rotate(-90deg);
+  }
+  82%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.landscape-tip-caption {
+  margin: 0;
+  max-width: 16em;
+  color: rgba(232, 251, 255, 0.28);
+  font: 500 11px/1.45 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  transition: color 0.2s ease;
+}
+
+.landscape-tip-caption.is-fail {
+  color: rgba(255, 196, 140, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landscape-tip-phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
 }
 
 #c {

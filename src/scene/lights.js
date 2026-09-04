@@ -7,7 +7,6 @@ import { SCENE } from '../config/sceneConfig.js';
  */
 export function createLights(scene, options = {}) {
   const targetPos = options.target ?? SCENE.camera.lookAt;
-  const castShadow = options.castShadow !== false;
   const sunDistance = options.sunDistance ?? 80;
 
   // Plaza m_AmbientSkyColor / m_AmbientGroundColor (HDR) × m_AmbientIntensity 0.28
@@ -21,26 +20,15 @@ export function createLights(scene, options = {}) {
   hemi.name = 'AmbientHemisphere';
   scene.add(hemi);
 
-  // Soft fill so non-toon (water) isn't pure black in shadows
+  // Soft fill so non-toon (water) isn't pure black in shadow regions
   const ambient = new THREE.AmbientLight(0xb8e8ff, 0.22);
   ambient.name = 'AmbientFill';
   scene.add(ambient);
 
   const sun = new THREE.DirectionalLight(SCENE.sunColor, SCENE.sunIntensity);
   sun.name = 'DirectionalLight';
-  sun.castShadow = castShadow;
-  if (castShadow) {
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.bias = -0.0005;
-    sun.shadow.normalBias = 0.04;
-    sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 250;
-    sun.shadow.camera.left = -120;
-    sun.shadow.camera.right = 120;
-    sun.shadow.camera.top = 120;
-    sun.shadow.camera.bottom = -120;
-    sun.shadow.intensity = SCENE.sunShadowStrength ?? 0.55;
-  }
+  // Toon materials ignore shadow maps; keep shadows off to save GPU.
+  sun.castShadow = false;
 
   const pitch = THREE.MathUtils.degToRad(SCENE.sunEulerDeg.x);
   const yaw = THREE.MathUtils.degToRad(SCENE.sunEulerDeg.y);

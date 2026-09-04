@@ -12,7 +12,6 @@ export const GAME_SETTINGS_KEY = 'pudgyworld.gameSettings.v2';
  *   invertLookY: boolean,
  *   zoomSensitivity: number,
  *   postProcessOutline: boolean,
- *   shadows: boolean,
  *   antialias: boolean,
  *   distanceCullEnabled: boolean,
  *   distanceCullDistance: number,
@@ -27,7 +26,6 @@ export const GAME_SETTINGS_DEFAULTS = Object.freeze({
   invertLookY: false,
   zoomSensitivity: 0.01,
   postProcessOutline: true,
-  shadows: true,
   antialias: true,
   distanceCullEnabled: false,
   distanceCullDistance: 80,
@@ -63,8 +61,6 @@ export function normalizeGameSettings(raw) {
       src.postProcessOutline === undefined
         ? GAME_SETTINGS_DEFAULTS.postProcessOutline
         : Boolean(src.postProcessOutline),
-    shadows:
-      src.shadows === undefined ? GAME_SETTINGS_DEFAULTS.shadows : Boolean(src.shadows),
     antialias:
       src.antialias === undefined ? GAME_SETTINGS_DEFAULTS.antialias : Boolean(src.antialias),
     distanceCullEnabled: Boolean(src.distanceCullEnabled),
